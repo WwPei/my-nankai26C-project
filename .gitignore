@@ -1,0 +1,35 @@
+# 构建产物
+build/
+/build*/
+
+# IDE 编辑器本地配置
+.qtcreator/
+.qtc_clangd/
+.vscode/
+.idea/
+*.user
+CMakeLists.txt.user*
+
+# Qt Creator 自动生成
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# 编译中间文件
+*.o
+*.obj
+*.lib
+*.a
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# 系统文件
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 测试文件（按需取消注释）
+# stage1_system_test.cpp

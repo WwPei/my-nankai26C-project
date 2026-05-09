@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <!-- 阶段0暂无外部资源，后续图片/音频/字体统一登记到这里。 -->
+    </qresource>
+</RCC>
