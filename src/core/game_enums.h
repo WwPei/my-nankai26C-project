@@ -5,8 +5,7 @@
 enum class PageId {
     Start,
     ClassSelect,
-    GameMain,
-    Upgrade
+    GameMain
 };
 
 enum class BattleFlowState {

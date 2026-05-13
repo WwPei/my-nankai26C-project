@@ -1,7 +1,3 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: Player 抽象基类 - 玩家属性、冲刺系统、信号声明
-// 最后修改: 2026-05-09
-
 #pragma once
 
 #include <QMap>

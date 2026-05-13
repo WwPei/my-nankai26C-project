@@ -342,6 +342,10 @@ private:
                 .arg(option.optionId.section('.', 0, -2),
                      QString::number(actualOption.level));
 
+            if (option.traitId == TraitId::QuickHands && actualOption.level >= 2) {
+                actualOption.iconPath = QStringLiteral(":/icons/mechanical_arm_3d (1).png");
+            }
+
             traitPool.append(actualOption);
         }
 

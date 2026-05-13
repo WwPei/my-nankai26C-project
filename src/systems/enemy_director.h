@@ -35,6 +35,7 @@ public:
     void showBossHealthBar(const QString &name, QFrame *&panel,
                            QLabel *&label, QProgressBar *&bar);
     void hideBossHealthBar(QFrame *&panel, QLabel *&label, QProgressBar *&bar);
+    void positionBossBarFixed(int x, int y);
 
     [[nodiscard]] QPointF randomEnemySpawnPosition() const;
     [[nodiscard]] static EnemyId randomEnemyId();

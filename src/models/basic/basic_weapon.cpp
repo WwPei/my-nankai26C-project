@@ -1,7 +1,3 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: BasicWeapon 类实现（从 game_factory.cpp 匿名命名空间提取）
-// 最后修改: 2026-05-07
-
 #include "basic_weapon.h"
 
 #include "player.h"

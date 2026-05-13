@@ -1,5 +1,43 @@
 <RCC>
     <qresource prefix="/">
+        <file>background_images/magic.jpg</file>
+        <file>background_images/tech.jpg</file>
+        <file>character/cowboy_hat_face_3d.png</file>
+        <file>character/face_with_monocle_3d.png</file>
+        <file>character/loudly_crying_face_3d.png</file>
+        <file>character/pouting_face_3d.png</file>
+        <file>character/rolling_on_the_floor_laughing_3d.png</file>
+        <file>character/shushing_face_3d.png</file>
+        <file>character/slightly_smiling_face_3d.png</file>
+        <file>character/smiling_face_with_halo_3d.png</file>
+        <file>character/smiling_face_with_sunglasses_3d.png</file>
+        <file>weapon/crossed_swords_3d.png</file>
+        <file>weapon/bow_and_arrow_3d.png</file>
+        <file>weapon/magic_wand_3d.png</file>
+        <file>icons/flexed_biceps_3d_default (1).png</file>
+        <file>icons/mechanical_arm_3d (1).png</file>
+        <file>icons/shield_3d.png</file>
+        <file>icons/bullseye_3d.png</file>
+        <file>icons/four_leaf_clover_3d.png</file>
+        <file>icons/snowflake_3d.png</file>
+        <file>icons/beating_heart_3d.png</file>
+        <file>icons/sparkles_3d.png</file>
+        <file>icons/man_running_3d_default.png</file>
+        <file>icons/satellite_antenna_3d.png</file>
+        <file>icons/link_3d.png</file>
+        <file>icons/heart_with_arrow_3d.png</file>
+        <file>icons/nazar_amulet_3d.png</file>
+        <file>icons/water_pistol_3d.png</file>
+        <file>icons/shooting_star_3d.png</file>
+        <file>icons/growing_heart_3d.png</file>
+        <file>musics/ser3_alien.mp3</file>
+        <file>musics/ser3_alien_boss.mp3</file>
+        <file>musics/sery1-boss (mp3cut).mp3</file>
+        <file>musics/sery1_normal.mp3</file>
+        <file>musics/sery2_boss.mp3</file>
+        <file>musics/sery2_skeleon (mp3cut).mp3</file>
+        <file>musics/bullet_in_normal.mp3</file>
+        <file>musics/bullet_in_kill.mp3</file>
         <file>images/emoji_dungeon.png</file>
         <file>images/class_bg.png</file>
         <file>images/warrior_icon.png</file>
@@ -16,21 +54,6 @@
         <file>images/clown_face_3d.png</file>
         <file>images/alien_monster_3d.png</file>
         <file>images/robot_3d.png</file>
-        <file>icons/quick_hands.png</file>
-        <file>icons/thick_skin.png</file>
-        <file>icons/lucky_shot.png</file>
-        <file>icons/vampiric_aura.png</file>
-        <file>icons/bouncing_bullet.png</file>
-        <file>icons/frostbite.png</file>
-        <file>icons/critical_strike.png</file>
-        <file>icons/exp_boost.png</file>
-        <file>icons/vitality.png</file>
-        <file>icons/adrenaline.png</file>
-        <file>icons/extra_projectiles.png</file>
-        <file>icons/range_boost.png</file>
-        <file>icons/pierce.png</file>
-        <file>icons/bullet_size.png</file>
-        <file>icons/combo.png</file>
         <file>images/dagger_3d.png</file>
         <file>images/sun_3d.png</file>
         <file>images/new_moon_3d.png</file>

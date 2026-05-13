@@ -9,7 +9,6 @@
 #include "class_select_page.h"
 #include "game_factory.h"
 #include "game_main_page.h"
-#include "upgrade_page.h"
 #include "wave_manager.h"
 
 EmojiDungeonWindow::EmojiDungeonWindow(QWidget *parent)
@@ -17,7 +16,7 @@ EmojiDungeonWindow::EmojiDungeonWindow(QWidget *parent)
     , m_stack(new QStackedWidget(this))
     , m_classSelectPage(new ClassSelectPage(this))
     , m_gameMainPage(new GameMainPage(this))
-    , m_upgradePage(new UpgradePage(this))
+
     , m_factory(new GameFactory(this))
 {
     setCentralWidget(m_stack);
@@ -32,7 +31,6 @@ EmojiDungeonWindow::EmojiDungeonWindow(QWidget *parent)
 
 void EmojiDungeonWindow::buildPages()
 {
-    // ========== 起始页 ==========
     m_startPage = new QWidget(this);
     m_startPage->setObjectName(QStringLiteral("startPage"));
 
@@ -40,26 +38,12 @@ void EmojiDungeonWindow::buildPages()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    // ---- 标题和简介：放在顶部居中 ----
-    auto *topLayout = new QVBoxLayout();
-    topLayout->setAlignment(Qt::AlignHCenter | Qt::AlignTop);   // 水平居中，贴顶
-    topLayout->setContentsMargins(0, 80, 0, 20);                // 上方留白
 
-    auto *titleLabel = new QLabel(QStringLiteral("Emoji Dungeon"), m_startPage);
-    titleLabel->setObjectName(QStringLiteral("startTitleLabel"));
+    m_pageHintLabel = new QLabel(m_startPage);
+    m_pageHintLabel->setObjectName(QStringLiteral("startIntroLabel"));
+    m_pageHintLabel->setWordWrap(true);
+    m_pageHintLabel->setAlignment(Qt::AlignCenter);
 
-    auto *introLabel = new QLabel(
-        QStringLiteral("阶段2最小闭环：开始单局、完成 10 波、升级后返回战斗，并在此查看结算摘要。"),
-        m_startPage);
-    introLabel->setObjectName(QStringLiteral("startIntroLabel"));
-    introLabel->setWordWrap(true);
-    introLabel->setAlignment(Qt::AlignCenter);
-
-    // 将标题和简介放入 topLayout（而不是直接加到主 layout）
-    topLayout->addWidget(titleLabel);
-    topLayout->addWidget(introLabel);
-
-    layout->addLayout(topLayout);
     layout->addStretch();   // 弹簧，把按钮推到底部
 
     // ---- 底部按钮：左右并列 ----
@@ -127,13 +111,10 @@ void EmojiDungeonWindow::buildPages()
     )");
 
     // 保存提示标签指针（用于结算文本显示）
-    m_pageHintLabel = introLabel;
-
-    // 将页面添加到 stack
+    // 页面添加到 stack
     m_stack->addWidget(m_startPage);
     m_stack->addWidget(m_classSelectPage);
     m_stack->addWidget(m_gameMainPage);
-    m_stack->addWidget(m_upgradePage);
 }
 
 void EmojiDungeonWindow::connectNavigation()
@@ -142,7 +123,7 @@ void EmojiDungeonWindow::connectNavigation()
         m_currentClassId = classId;
         m_selectedTraits.clear();
         if (m_pageHintLabel != nullptr) {
-            m_pageHintLabel->setText(QStringLiteral("阶段2单局已开始：完成 10 波即可返回开始页查看结算摘要。"));
+            m_pageHintLabel->setText(QString());
         }
         m_gameMainPage->setSelectedClass(classId);
         setCurrentPage(PageId::GameMain);
@@ -152,46 +133,14 @@ void EmojiDungeonWindow::connectNavigation()
         setCurrentPage(PageId::Start);
     });
 
-    connect(m_gameMainPage, &GameMainPage::upgradeRequested, this, [this]() {
-        if (m_gameMainPage != nullptr && m_gameMainPage->waveManager() != nullptr) {
-            m_upgradePage->setUpgradeOptions(m_gameMainPage->waveManager()->currentUpgradeOptions());
+    connect(m_gameMainPage, &GameMainPage::traitAcquired, this, [this](TraitId traitId) {
+        if (!m_selectedTraits.contains(traitId)) {
+            m_selectedTraits.push_back(traitId);
         }
-        m_upgradePage->setPreviewContext(UpgradePreviewContext {
-            m_currentClassId,
-            m_gameMainPage != nullptr ? m_gameMainPage->currentWeaponId() : GameConfig::kPlayerClasses.constFirst().starterWeaponId,
-            m_selectedTraits
-        });
-        setCurrentPage(PageId::Upgrade);
     });
 
     connect(m_gameMainPage, &GameMainPage::exitRequested, this, [this]() {
         setCurrentPage(PageId::Start);
-    });
-
-    connect(m_upgradePage, &UpgradePage::upgradeOptionSelected, this, [this](UpgradeOption option) {
-        if (m_gameMainPage != nullptr && m_gameMainPage->waveManager() != nullptr) {
-            m_gameMainPage->waveManager()->confirmUpgradeSelection(option);
-            if (!m_gameMainPage->waveManager()->hasPendingUpgrade()) {
-                m_gameMainPage->resumeBattleState();
-                setCurrentPage(PageId::GameMain);
-            }
-        }
-    });
-
-    connect(m_upgradePage, &UpgradePage::traitSelected, this, [this](TraitId traitId) {
-        if (!m_selectedTraits.contains(traitId)) {
-            m_selectedTraits.push_back(traitId);
-        }
-        if (m_gameMainPage != nullptr) {
-            m_gameMainPage->applyTrait(traitId);
-        }
-    });
-
-    connect(m_upgradePage, &UpgradePage::bulletStyleSelected, this, [this](BulletStyle style) {
-        m_activeBulletStyle = style;
-        if (m_gameMainPage != nullptr) {
-            m_gameMainPage->setActiveBulletStyle(style);
-        }
     });
 
     connect(m_gameMainPage, &GameMainPage::battleFinished, this, [this](bool victory) {
@@ -235,12 +184,6 @@ void EmojiDungeonWindow::setCurrentPage(PageId pageId)
             m_gameMainPage->setBattleActive(true);
         }
         break;
-    case PageId::Upgrade:
-        if (m_gameMainPage != nullptr) {
-            m_gameMainPage->enterUpgradeState();
-        }
-        m_stack->setCurrentWidget(m_upgradePage);
-        break;
     }
 
     updateWindowTitle();
@@ -259,9 +202,6 @@ void EmojiDungeonWindow::updateWindowTitle()
         break;
     case PageId::GameMain:
         pageName = QStringLiteral("游戏主页面");
-        break;
-    case PageId::Upgrade:
-        pageName = QStringLiteral("升级页面");
         break;
     }
 

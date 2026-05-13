@@ -74,7 +74,7 @@ void BasicBulletView::bindModel(BulletData *data)
     }
 
     prepareGeometryChange();
-    m_radius = m_model->collisionRadius();
+    m_radius = m_model->collisionRadius() * 1.6;
     connect(m_model, &BulletData::positionChanged, this, [this](const QPointF &) {
         syncFromData();
     });
@@ -88,7 +88,7 @@ void BasicBulletView::syncFromData()
         return;
     }
 
-    const qreal newRadius = std::max<qreal>(4.0, m_model->collisionRadius());
+    const qreal newRadius = std::max<qreal>(6.0, m_model->collisionRadius() * 1.6);
     if (!qFuzzyCompare(m_radius, newRadius)) {
         prepareGeometryChange();
         m_radius = newRadius;

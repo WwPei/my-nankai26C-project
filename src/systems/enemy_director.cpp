@@ -170,6 +170,37 @@ void EnemyDirector::spawnBossIfPending(WaveManager *wm, bool &bossIsActive, Enem
         onBossEntityCreated(entity);
         bossIsActive = true;
         currentBossId = bossId;
+
+        EnemyId minionId;
+        switch (bossId) {
+        case EnemyId::DemonLord:
+            minionId = EnemyId::Ogre;
+            break;
+        case EnemyId::BoneLord:
+            minionId = EnemyId::SkeletonNew;
+            break;
+        case EnemyId::UFO:
+        case EnemyId::AlienPilot:
+            minionId = EnemyId::Robot;
+            break;
+        default:
+            minionId = EnemyId::Ogre;
+            break;
+        }
+
+        for (int i = 0; i < 4; ++i) {
+            const float angle = (static_cast<float>(i) / 4.0F) * 2.0F * 3.14159265F;
+            const QPointF offset(std::cos(angle) * 150.0F, std::sin(angle) * 150.0F);
+            auto minion = m_factory->createEnemyEntity(minionId, center + offset, this);
+            if (minion.data == nullptr || minion.view == nullptr) {
+                if (minion.view != nullptr) minion.view->deleteLater();
+                if (minion.data != nullptr) minion.data->deleteLater();
+                continue;
+            }
+            connectEnemyShootSignals(minion.data);
+            m_scene->addItem(minion.view);
+            m_enemies->push_back(minion);
+        }
     }
 }
 
@@ -297,6 +328,12 @@ void EnemyDirector::hideBossHealthBar(QFrame *&panel, QLabel *&label, QProgressB
         label = nullptr;
         bar = nullptr;
     }
+}
+
+void EnemyDirector::positionBossBarFixed(int x, int y)
+{
+    if (m_bossHpPanel == nullptr) return;
+    m_bossHpPanel->move(x, y);
 }
 
 QPointF EnemyDirector::randomEnemySpawnPosition() const

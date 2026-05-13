@@ -1,6 +1,3 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: 游戏主页面战斗、波次推进与状态栏逻辑
-// 最后修改: 2026-05-08
 #pragma once
 
 #include <QPointF>
@@ -15,13 +12,16 @@ class CombatCoordinator;
 class DashCooldownWidget;
 class EnemyData;
 class EnemyDirector;
+class QAudioOutput;
 class QFrame;
+class QGridLayout;
+class QHBoxLayout;
 class QLabel;
+class QMediaPlayer;
 class PlayerAvatarItem;
 class Player;
 class UpgradeResolver;
 class Weapon;
-class QCheckBox;
 class QGraphicsScene;
 class QGraphicsEllipseItem;
 class QProgressBar;
@@ -61,6 +61,10 @@ signals:
     void battleStateChanged(BattleFlowState state);
     void battleFinished(bool victory);
     void statsChanged();
+    void traitAcquired(TraitId traitId);
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     void setBattleState(BattleFlowState state);
@@ -78,25 +82,37 @@ private:
     void applyDynamicDifficulty(int wave, EnemyData *enemy);
     void updateStatusText();
     [[nodiscard]] QPointF bossSpawnPosition() const;
+    void setupBgMusic();
+    void updateBattleBackground();
+    void switchBgMusic(const QString &trackName);
+    void checkBossDefeat();
+    void playHitSound();
+    void playKillSound();
+    void positionHudElements();
+    void showUpgradeOverlay();
+    void hideUpgradeOverlay();
+    void buildUpgradeCards(const UpgradeOptions &options);
+    void onUpgradeCardClicked(int index);
+    void confirmUpgrade();
 
-    QLabel *m_classLabel {nullptr};
-    QLabel *m_statusLabel {nullptr};
-    QLabel *m_weaponLabel {nullptr};
-    QLabel *m_attackLabel {nullptr};
-    QLabel *m_attackSpeedLabel {nullptr};
-    QLabel *m_moveSpeedLabel {nullptr};
-    QLabel *m_roundLabel {nullptr};
-    QLabel *m_levelLabel {nullptr};
-    QLabel *m_experienceLabel {nullptr};
-    QLabel *m_enemyCountLabel {nullptr};
-    QLabel *m_bulletCountLabel {nullptr};
-    QLabel *m_attributeChangeLabel {nullptr};
-    QLabel *m_traitsLabel {nullptr};
-    QLabel *m_aimHintLabel {nullptr};
-    QCheckBox *m_gridToggle {nullptr};
+    QWidget *m_rightHudPanel {nullptr};
     QProgressBar *m_healthBar {nullptr};
+    QLabel *m_levelLabel {nullptr};
+    QProgressBar *m_expBar {nullptr};
+    QLabel *m_weaponIconLabel {nullptr};
+
+    QWidget *m_leftHudPanel {nullptr};
+    QProgressBar *m_leftExpBar {nullptr};
+    QHBoxLayout *m_traitIconsLayout {nullptr};
+
     QProgressBar *m_waveProgressBar {nullptr};
-    QPushButton *m_upgradeButton {nullptr};
+
+    QWidget *m_upgradeOverlay {nullptr};
+    QGridLayout *m_upgradeCardsGrid {nullptr};
+    QList<QFrame *> m_upgradeCards;
+    QPushButton *m_upgradeConfirmButton {nullptr};
+    int m_selectedUpgradeIndex {-1};
+    UpgradeOptions m_pendingUpgradeOptions;
     QGraphicsScene *m_scene {nullptr};
     BattleArenaView *m_view {nullptr};
     QGraphicsEllipseItem *m_playerMarker {nullptr};
@@ -131,4 +147,14 @@ private:
     CombatCoordinator *m_combatCoordinator{nullptr};
     EnemyDirector *m_enemyDirector{nullptr};
     DashCooldownWidget *m_dashCooldownWidget{nullptr};
+
+    QMediaPlayer *m_bgMusicPlayer{nullptr};
+    QAudioOutput *m_audioOutput{nullptr};
+    QMediaPlayer *m_hitSoundPlayer{nullptr};
+    QAudioOutput *m_hitSoundOutput{nullptr};
+    QMediaPlayer *m_killSoundPlayer{nullptr};
+    QAudioOutput *m_killSoundOutput{nullptr};
+    bool m_backgroundTechActive{false};
+    bool m_demonLordDefeated{false};
+    QString m_currentNormalBgm{QStringLiteral("sery1_normal")};
 };

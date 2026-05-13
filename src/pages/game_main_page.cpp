@@ -19,7 +19,7 @@
 #include "weapon.h"
 
 #include <QApplication>
-#include <QCheckBox>
+#include <QAudioOutput>
 #include <QEvent>
 #include <QFrame>
 #include <QGraphicsEllipseItem>
@@ -30,13 +30,19 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineF>
+#include <QMediaPlayer>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
+#include <QPixmap>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QRandomGenerator>
+#include <QResizeEvent>
+#include <QStyle>
 #include <QTimer>
+#include <QVariantAnimation>
+#include <QUrl>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -95,21 +101,7 @@ QLabel#statValueLabel {
     font-size: 16px;
     font-weight: 700;
 }
-QCheckBox#gridToggle {
-    spacing: 8px;
-    color: #d7dce5;
-}
-QCheckBox#gridToggle::indicator {
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    border: 1px solid #5b6474;
-    background: #1b1f26;
-}
-QCheckBox#gridToggle::indicator:checked {
-    background: #4b7bec;
-    border: 1px solid #82afff;
-}
+
 QProgressBar {
     border: 1px solid #3a4352;
     border-radius: 6px;
@@ -163,6 +155,16 @@ QGraphicsView#battleArenaView {
         || key == Qt::Key_D;
 }
 
+[[nodiscard]] QString traitIconForId(TraitId tid)
+{
+    for (const auto &opt : GameConfig::kAllUpgradeOptions) {
+        if (opt.kind == UpgradeOptionKind::Trait && opt.traitId == tid) {
+            return opt.iconPath;
+        }
+    }
+    return {};
+}
+
 [[nodiscard]] QString signedPercentText(float multiplier)
 {
     const float deltaPercent = (multiplier - 1.0F) * 100.0F;
@@ -191,130 +193,21 @@ GameMainPage::GameMainPage(QWidget *parent)
     setStyleSheet(QString::fromUtf8(kBattlePageStyle));
     setFocusPolicy(Qt::StrongFocus);
     installEventFilter(this);
-    if (qApp != nullptr) {
-        qApp->installEventFilter(this);
-    }
 
     auto *rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(16, 16, 16, 16);
-    rootLayout->setSpacing(12);
-
-    auto *titleLabel = new QLabel(QStringLiteral("\u9636\u6bb52\u6218\u6597\u9875"), this);
-    titleLabel->setObjectName(QStringLiteral("pageTitleLabel"));
-    rootLayout->addWidget(titleLabel);
-
-    m_classLabel = new QLabel(QStringLiteral("\u5f53\u524d\u804c\u4e1a\uff1a\u672a\u9009\u62e9"), this);
-    m_classLabel->setObjectName(QStringLiteral("classLabel"));
-    rootLayout->addWidget(m_classLabel);
-
-    m_statusLabel = new QLabel(QStringLiteral("\u7b49\u5f85\u804c\u4e1a\u9009\u62e9\u5e76\u521b\u5efa\u6218\u6597\u5bf9\u8c61\u3002"), this);
-    m_statusLabel->setObjectName(QStringLiteral("statusLabel"));
-    m_statusLabel->setWordWrap(true);
-    rootLayout->addWidget(m_statusLabel);
-
-    auto *middleLayout = new QHBoxLayout();
-    middleLayout->setSpacing(12);
-    rootLayout->addLayout(middleLayout, 1);
-
-    auto *battlePanel = new QFrame(this);
-    battlePanel->setObjectName(QStringLiteral("battlePanel"));
-    auto *battleLayout = new QVBoxLayout(battlePanel);
-    battleLayout->setContentsMargins(12, 12, 12, 12);
-    battleLayout->setSpacing(10);
-
-    auto *battleHeaderLayout = new QHBoxLayout();
-    auto *battleTitle = new QLabel(QStringLiteral("\u6218\u6597\u533a"), battlePanel);
-    battleTitle->setObjectName(QStringLiteral("panelTitleLabel"));
-    m_gridToggle = new QCheckBox(QStringLiteral("\u663e\u793a\u7f51\u683c"), battlePanel);
-    m_gridToggle->setObjectName(QStringLiteral("gridToggle"));
-    m_gridToggle->setChecked(true);
-    battleHeaderLayout->addWidget(battleTitle);
-    battleHeaderLayout->addStretch();
-    battleHeaderLayout->addWidget(m_gridToggle);
-    battleLayout->addLayout(battleHeaderLayout);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
 
     m_scene = new QGraphicsScene(this);
     m_scene->setSceneRect(-320.0, -180.0, 640.0, 360.0);
 
-    m_view = new BattleArenaView(m_scene, battlePanel);
-    m_view->setMinimumSize(780, 500);
+    m_view = new BattleArenaView(m_scene, this);
     m_view->setFocusPolicy(Qt::StrongFocus);
     m_view->setMouseTracking(true);
     m_view->viewport()->setMouseTracking(true);
     m_view->installEventFilter(this);
     m_view->viewport()->installEventFilter(this);
-    battleLayout->addWidget(m_view, 1);
-    middleLayout->addWidget(battlePanel, 1);
-
-    auto *statusPanel = new QFrame(this);
-    statusPanel->setObjectName(QStringLiteral("statusPanel"));
-    statusPanel->setFixedWidth(280);
-    auto *statusLayout = new QVBoxLayout(statusPanel);
-    statusLayout->setContentsMargins(14, 14, 14, 14);
-    statusLayout->setSpacing(10);
-
-    auto *panelTitle = new QLabel(QStringLiteral("\u72b6\u6001\u9762\u677f"), statusPanel);
-    panelTitle->setObjectName(QStringLiteral("panelTitleLabel"));
-    statusLayout->addWidget(panelTitle);
-
-    auto createStatBlock = [statusPanel, statusLayout](const QString &title, QLabel **valueLabel) {
-        auto *titleLabel = new QLabel(title, statusPanel);
-        titleLabel->setObjectName(QStringLiteral("statTitleLabel"));
-        statusLayout->addWidget(titleLabel);
-
-        *valueLabel = new QLabel(QStringLiteral("--"), statusPanel);
-        (*valueLabel)->setObjectName(QStringLiteral("statValueLabel"));
-        statusLayout->addWidget(*valueLabel);
-    };
-
-    auto *healthTitle = new QLabel(QStringLiteral("\u751f\u547d\u503c"), statusPanel);
-    healthTitle->setObjectName(QStringLiteral("statTitleLabel"));
-    statusLayout->addWidget(healthTitle);
-
-    m_healthBar = new QProgressBar(statusPanel);
-    m_healthBar->setObjectName(QStringLiteral("healthBar"));
-    m_healthBar->setRange(0, 100);
-    m_healthBar->setValue(0);
-    m_healthBar->setFormat(QStringLiteral("0 / 0"));
-    statusLayout->addWidget(m_healthBar);
-
-    auto *waveTitle = new QLabel(QStringLiteral("\u9636\u6bb5\u8fdb\u5ea6"), statusPanel);
-    waveTitle->setObjectName(QStringLiteral("statTitleLabel"));
-    statusLayout->addWidget(waveTitle);
-
-    m_waveProgressBar = new QProgressBar(statusPanel);
-    m_waveProgressBar->setObjectName(QStringLiteral("waveProgressBar"));
-    m_waveProgressBar->setRange(0, GameConfig::kWaveConfig.roundDurationMs);
-    m_waveProgressBar->setValue(0);
-    m_waveProgressBar->setFormat(QStringLiteral("\u7b2c1/%1\u6ce2 %p%").arg(GameConfig::kWaveConfig.maxRounds));
-    statusLayout->addWidget(m_waveProgressBar);
-
-    createStatBlock(QStringLiteral("\u5f53\u524d\u6ce2\u6b21"), &m_roundLabel);
-    createStatBlock(QStringLiteral("\u7b49\u7ea7"), &m_levelLabel);
-    createStatBlock(QStringLiteral("\u7ecf\u9a8c"), &m_experienceLabel);
-    createStatBlock(QStringLiteral("\u6b66\u5668"), &m_weaponLabel);
-    createStatBlock(QStringLiteral("\u653b\u51fb\u529b"), &m_attackLabel);
-    createStatBlock(QStringLiteral("\u653b\u901f"), &m_attackSpeedLabel);
-    createStatBlock(QStringLiteral("\u79fb\u901f"), &m_moveSpeedLabel);
-    createStatBlock(QStringLiteral("\u654c\u4eba\u6570"), &m_enemyCountLabel);
-    createStatBlock(QStringLiteral("\u5b50\u5f39\u6570"), &m_bulletCountLabel);
-    createStatBlock(QStringLiteral("\u5c5e\u6027\u53d8\u5316"), &m_attributeChangeLabel);
-    createStatBlock(QStringLiteral("\u5df2\u83b7\u7279\u6027"), &m_traitsLabel);
-    createStatBlock(QStringLiteral("\u7784\u51c6"), &m_aimHintLabel);
-    m_attributeChangeLabel->setWordWrap(true);
-    m_attributeChangeLabel->setTextFormat(Qt::RichText);
-    m_traitsLabel->setWordWrap(true);
-
-    auto *controlHint = new QLabel(QStringLiteral("\u64cd\u4f5c\uff1aWASD\u81ea\u7531\u79fb\u52a8\uff0c\u9f20\u6807\u7784\u51c6\uff0c\u6309\u4f4f\u5de6\u952e\u6301\u7eed\u653b\u51fb\u3002"), statusPanel);
-    controlHint->setWordWrap(true);
-    controlHint->setObjectName(QStringLiteral("statTitleLabel"));
-    statusLayout->addWidget(controlHint);
-    statusLayout->addStretch();
-
-    m_dashCooldownWidget = new DashCooldownWidget(statusPanel);
-    statusLayout->addWidget(m_dashCooldownWidget, 0, Qt::AlignCenter);
-
-    middleLayout->addWidget(statusPanel);
+    rootLayout->addWidget(m_view, 1);
 
     m_playerMarker = m_scene->addEllipse(-kPlayerMarkerRadius, -kPlayerMarkerRadius,
                                          kPlayerMarkerRadius * 2.0, kPlayerMarkerRadius * 2.0,
@@ -326,33 +219,120 @@ GameMainPage::GameMainPage(QWidget *parent)
     m_playerAvatar->setVisible(false);
     m_scene->addItem(m_playerAvatar);
 
+    m_rightHudPanel = new QWidget(this);
+    m_rightHudPanel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_rightHudPanel->setStyleSheet(QStringLiteral(
+        "background: rgba(20,24,35,0.88); border: 1px solid rgba(60,70,90,0.6); border-radius: 10px;"));
+    auto *rightLayout = new QVBoxLayout(m_rightHudPanel);
+    rightLayout->setContentsMargins(10, 10, 10, 10);
+    rightLayout->setSpacing(6);
+
+    m_healthBar = new QProgressBar(m_rightHudPanel);
+    m_healthBar->setRange(0, 100);
+    m_healthBar->setValue(0);
+    m_healthBar->setFormat(QStringLiteral("0 / 0"));
+    m_healthBar->setTextVisible(true);
+    m_healthBar->setFixedHeight(22);
+    rightLayout->addWidget(m_healthBar);
+
+    m_levelLabel = new QLabel(QStringLiteral("Lv.0"), m_rightHudPanel);
+    m_levelLabel->setStyleSheet(
+        QStringLiteral("color: #f6f8fc; font-size: 15px; font-weight: 800; background: transparent;"));
+    rightLayout->addWidget(m_levelLabel);
+
+    m_expBar = new QProgressBar(m_rightHudPanel);
+    m_expBar->setRange(0, 100);
+    m_expBar->setValue(0);
+    m_expBar->setFormat(QStringLiteral("%p%"));
+    m_expBar->setTextVisible(true);
+    m_expBar->setFixedHeight(14);
+    m_expBar->setStyleSheet(QStringLiteral(
+        "QProgressBar { border: 1px solid #3a4352; border-radius: 4px; background: #15181d; color: #aab; }"
+        "QProgressBar::chunk { border-radius: 3px; background-color: #6eb5ff; }"));
+    rightLayout->addWidget(m_expBar);
+
+    m_weaponIconLabel = new QLabel(m_rightHudPanel);
+    m_weaponIconLabel->setFixedSize(50, 50);
+    m_weaponIconLabel->setAlignment(Qt::AlignCenter);
+    m_weaponIconLabel->setStyleSheet(QStringLiteral("background: transparent;"));
+    rightLayout->addWidget(m_weaponIconLabel, 0, Qt::AlignCenter);
+    rightLayout->addStretch();
+
+    m_leftHudPanel = new QWidget(this);
+    m_leftHudPanel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_leftHudPanel->setStyleSheet(QStringLiteral(
+        "background: rgba(20,24,35,0.88); border: 1px solid rgba(60,70,90,0.6); border-radius: 10px;"));
+    auto *leftLayout = new QVBoxLayout(m_leftHudPanel);
+    leftLayout->setContentsMargins(10, 10, 10, 10);
+    leftLayout->setSpacing(8);
+
+    m_dashCooldownWidget = new DashCooldownWidget(m_leftHudPanel);
+    leftLayout->addWidget(m_dashCooldownWidget, 0, Qt::AlignCenter);
+
+    m_leftExpBar = new QProgressBar(m_leftHudPanel);
+    m_leftExpBar->setRange(0, 100);
+    m_leftExpBar->setValue(0);
+    m_leftExpBar->setFormat(QStringLiteral("经验 0/0"));
+    m_leftExpBar->setTextVisible(true);
+    m_leftExpBar->setFixedHeight(18);
+    m_leftExpBar->setStyleSheet(QStringLiteral(
+        "QProgressBar { border: 1px solid #3a4352; border-radius: 4px; background: rgba(21,24,29,0.8);"
+        "color: #d6dff0; font-size: 11px; font-weight: 600; }"
+        "QProgressBar::chunk { border-radius: 3px; background-color: #f7b731; }"));
+    leftLayout->addWidget(m_leftExpBar);
+
+    auto *traitTag = new QLabel(QStringLiteral("特性"), m_leftHudPanel);
+    traitTag->setStyleSheet(QStringLiteral("color: #93a0b4; font-size: 10px; background: transparent;"));
+    leftLayout->addWidget(traitTag);
+
+    m_traitIconsLayout = new QHBoxLayout();
+    m_traitIconsLayout->setSpacing(3);
+    leftLayout->addLayout(m_traitIconsLayout);
+    leftLayout->addStretch();
+
+    m_waveProgressBar = new QProgressBar(this);
+    m_waveProgressBar->setObjectName(QStringLiteral("waveProgressBar"));
+    m_waveProgressBar->setRange(0, GameConfig::kWaveConfig.roundDurationMs);
+    m_waveProgressBar->setValue(0);
+    m_waveProgressBar->setTextVisible(true);
+    m_waveProgressBar->setStyleSheet(QStringLiteral(
+        "QProgressBar { border: 1px solid #3a4352; border-radius: 6px; background: rgba(21,24,29,0.85);"
+        "color: #f6f8fb; text-align: center; min-height:22px; }"
+        "QProgressBar::chunk { border-radius: 5px; background-color: #4b7bec; }"));
+
+    m_upgradeOverlay = new QWidget(this);
+    m_upgradeOverlay->setVisible(false);
+    m_upgradeOverlay->setStyleSheet(
+        QStringLiteral("background: rgba(10, 12, 18, 0.88);"));
+    auto *upgradeRoot = new QVBoxLayout(m_upgradeOverlay);
+    upgradeRoot->setAlignment(Qt::AlignCenter);
+
+    auto *upgradeTitle = new QLabel(QStringLiteral("选择升级"), m_upgradeOverlay);
+    upgradeTitle->setStyleSheet(
+        QStringLiteral("color: white; font-size: 28px; font-weight: 700; background: transparent;"));
+    upgradeTitle->setAlignment(Qt::AlignCenter);
+    upgradeRoot->addWidget(upgradeTitle);
+
+    m_upgradeCardsGrid = new QGridLayout();
+    m_upgradeCardsGrid->setSpacing(14);
+    m_upgradeCardsGrid->setContentsMargins(60, 24, 60, 24);
+    upgradeRoot->addLayout(m_upgradeCardsGrid);
+
+    m_upgradeConfirmButton = new QPushButton(QStringLiteral("确认选择"), m_upgradeOverlay);
+    m_upgradeConfirmButton->setFixedSize(220, 46);
+    m_upgradeConfirmButton->setEnabled(false);
+    m_upgradeConfirmButton->setStyleSheet(QStringLiteral(
+        "QPushButton { background: #335b9d; color: white; border: 1px solid #6b88b8;"
+        "border-radius: 10px; font-size: 16px; font-weight: 700; }"
+        "QPushButton:hover { background: #4472bc; }"
+        "QPushButton:disabled { background: #28303b; color: #7b8798; border-color: #485261; }"));
+    upgradeRoot->addWidget(m_upgradeConfirmButton, 0, Qt::AlignCenter);
+
+    connect(m_upgradeConfirmButton, &QPushButton::clicked, this, &GameMainPage::confirmUpgrade);
+
     m_gameLoopTimer = new QTimer(this);
     m_gameLoopTimer->setInterval(GameConfig::kWaveConfig.updateIntervalMs);
     connect(m_gameLoopTimer, &QTimer::timeout, this, &GameMainPage::handleBattleTick);
-    connect(m_gridToggle, &QCheckBox::toggled, m_view, [this](bool checked) {
-        if (m_view != nullptr) {
-            m_view->setGridVisible(checked);
-        }
-    });
-
-    auto *buttonLayout = new QHBoxLayout();
-    m_upgradeButton = new QPushButton(QStringLiteral("\u5f53\u524d\u65e0\u5f85\u9009\u5347\u7ea7"), this);
-    m_upgradeButton->setObjectName(QStringLiteral("upgradeButton"));
-    auto *exitButton = new QPushButton(QStringLiteral("\u8fd4\u56de\u5f00\u59cb\u9875"), this);
-    exitButton->setObjectName(QStringLiteral("exitButton"));
-    buttonLayout->addWidget(m_upgradeButton);
-    buttonLayout->addWidget(exitButton);
-    buttonLayout->addStretch();
-    rootLayout->addLayout(buttonLayout);
-
-    connect(m_upgradeButton, &QPushButton::clicked, this, [this]() {
-        if (m_waveManager != nullptr && m_waveManager->hasPendingUpgrade()) {
-            m_waveManager->enterUpgrade();
-            return;
-        }
-        updateStatusText();
-    });
-    connect(exitButton, &QPushButton::clicked, this, &GameMainPage::exitRequested);
 
     m_waveManager = createWaveManager(this);
     connect(m_waveManager, &WaveManager::battleStateChanged, this, [this](BattleFlowState state) {
@@ -381,8 +361,11 @@ GameMainPage::GameMainPage(QWidget *parent)
         updateStatusText();
     });
     connect(m_waveManager, &WaveManager::upgradeRequested, this, [this]() {
+        setBattleState(BattleFlowState::Upgrade);
         setBattleActive(false);
-        emit upgradeRequested();
+        QTimer::singleShot(0, this, [this]() {
+            showUpgradeOverlay();
+        });
     });
 
     m_upgradeResolver = new UpgradeResolver(nullptr, nullptr, nullptr, this);
@@ -391,6 +374,20 @@ GameMainPage::GameMainPage(QWidget *parent)
     m_enemyDirector = new EnemyDirector(nullptr, m_scene, this, this);
 
     updateHealthBarStyle(1.0F);
+    setupBgMusic();
+
+    m_hitSoundPlayer = new QMediaPlayer(this);
+    m_hitSoundOutput = new QAudioOutput(this);
+    m_hitSoundOutput->setVolume(0.7F);
+    m_hitSoundPlayer->setAudioOutput(m_hitSoundOutput);
+    m_hitSoundPlayer->setSource(QUrl(QStringLiteral("qrc:/musics/bullet_in_normal.mp3")));
+
+    m_killSoundPlayer = new QMediaPlayer(this);
+    m_killSoundOutput = new QAudioOutput(this);
+    m_killSoundOutput->setVolume(0.8F);
+    m_killSoundPlayer->setAudioOutput(m_killSoundOutput);
+    m_killSoundPlayer->setSource(QUrl(QStringLiteral("qrc:/musics/bullet_in_kill.mp3")));
+
     updateStatusText();
 }
 
@@ -489,6 +486,21 @@ bool GameMainPage::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
+    // Handle mouse click on upgrade cards
+    if (event->type() == QEvent::MouseButtonPress) {
+        auto *mouseEvent = static_cast<QMouseEvent *>(event);
+        if (mouseEvent->button() == Qt::LeftButton) {
+            QWidget *cardWidget = qobject_cast<QWidget *>(watched);
+            if (cardWidget != nullptr) {
+                QVariant prop = cardWidget->property("cardIndex");
+                if (prop.isValid()) {
+                    onUpgradeCardClicked(prop.toInt());
+                    return true;
+                }
+            }
+        }
+    }
+
     return QWidget::eventFilter(watched, event);
 }
 
@@ -504,14 +516,6 @@ void GameMainPage::setSelectedClass(PlayerClassId classId)
 {
     m_selectedClassId = classId;
     m_hasSelectedClass = true;
-
-    const auto *config = GameConfig::findPlayerClassConfig(classId);
-    if (config == nullptr) {
-        m_classLabel->setText(QStringLiteral("\u5f53\u524d\u804c\u4e1a\uff1a\u672a\u77e5"));
-        return;
-    }
-
-    m_classLabel->setText(QStringLiteral("\u5f53\u524d\u804c\u4e1a\uff1a%1").arg(config->displayName));
     rebuildBattleScene();
 }
 
@@ -695,6 +699,17 @@ void GameMainPage::rebuildBattleScene()
     if (m_playerAvatar != nullptr) {
         m_playerAvatar->setPos(m_player->worldPosition());
         m_playerAvatar->setVisible(true);
+        switch (m_selectedClassId) {
+        case PlayerClassId::Warrior:
+            m_playerAvatar->setAimArrow(QStringLiteral(":/weapon/crossed_swords_3d.png"));
+            break;
+        case PlayerClassId::Ranger:
+            m_playerAvatar->setAimArrow(QStringLiteral(":/weapon/bow_and_arrow_3d.png"));
+            break;
+        case PlayerClassId::Caster:
+            m_playerAvatar->setAimArrow(QStringLiteral(":/weapon/magic_wand_3d.png"));
+            break;
+        }
     }
 
     connect(m_player, &Player::moved, this, [this](const QPointF &position) {
@@ -754,6 +769,12 @@ void GameMainPage::rebuildBattleScene()
     if (m_waveManager != nullptr) {
         m_waveManager->resetRun();
     }
+
+    m_backgroundTechActive = false;
+    m_demonLordDefeated = false;
+    m_currentNormalBgm = QStringLiteral("sery1_normal");
+    updateBattleBackground();
+    switchBgMusic(QStringLiteral("sery1_normal"));
 
     for (int index = 0; index < GameConfig::kWaveConfig.initialEnemyCount; ++index) {
         m_enemyDirector->spawnTestEnemy(GameConfig::kWaveConfig.maxConcurrentEnemies,
@@ -853,6 +874,16 @@ void GameMainPage::handleBattleTick()
 
     m_enemyDirector->spawnBossIfPending(m_waveManager, m_bossIsActive, m_currentBossId);
 
+    if (m_bossIsActive) {
+        if (m_currentBossId == EnemyId::DemonLord && !m_demonLordDefeated) {
+            switchBgMusic(QStringLiteral("sery1-boss (mp3cut)"));
+        } else if (m_currentBossId == EnemyId::BoneLord) {
+            switchBgMusic(QStringLiteral("sery2_boss"));
+        } else if (m_currentBossId == EnemyId::UFO || m_currentBossId == EnemyId::AlienPilot) {
+            switchBgMusic(QStringLiteral("ser3_alien_boss"));
+        }
+    }
+
     const int elapsedRoundMs = m_waveManager != nullptr ? m_waveManager->elapsedRoundMs() : 0;
     if (elapsedRoundMs < waveConfig.roundDurationMs) {
         m_enemySpawnAccumulatorMs += static_cast<float>(waveConfig.updateIntervalMs);
@@ -887,10 +918,44 @@ void GameMainPage::handleBattleTick()
     const QMap<TraitId, int> traitCounts = m_upgradeResolver != nullptr
         ? m_upgradeResolver->traitCounts()
         : QMap<TraitId, int>{};
+
+    const int enemiesBeforeKill = static_cast<int>(m_enemies.size());
+
+    QVector<float> enemyHpBefore;
+    enemyHpBefore.reserve(m_enemies.size());
+    for (const auto &enemy : std::as_const(m_enemies)) {
+        enemyHpBefore.append(enemy.data != nullptr ? enemy.data->currentHealth() : -1.0F);
+    }
+
+    const float playerHpBefore = m_player != nullptr ? m_player->currentHealth() : 0.0F;
     m_combatCoordinator->resolveCombatCollisions(m_bullets, m_enemies, m_playerMarker,
                                                   m_playerDamageCooldownRemainingMs, traitCounts);
+
+    if (m_player != nullptr && m_player->currentHealth() < playerHpBefore - 0.001F) {
+        m_playerDamageCooldownRemainingMs = std::max(m_playerDamageCooldownRemainingMs, kPlayerDamageCooldownMs);
+    }
+
+    bool anyEnemyHit = false;
+    for (int i = 0; i < m_enemies.size() && i < enemyHpBefore.size(); ++i) {
+        if (enemyHpBefore[i] < 0.0F) continue;
+        if (m_enemies[i].data == nullptr || m_enemies[i].data->isDefeated()) continue;
+        if (m_enemies[i].data->currentHealth() < enemyHpBefore[i] - 0.001F) {
+            anyEnemyHit = true;
+            break;
+        }
+    }
+    if (anyEnemyHit) {
+        playHitSound();
+    }
+
     m_combatCoordinator->cleanupExpiredBullets(m_bullets);
     m_combatCoordinator->cleanupDefeatedEnemies(m_enemies, m_waveManager, traitCounts);
+
+    if (static_cast<int>(m_enemies.size()) < enemiesBeforeKill) {
+        playKillSound();
+    }
+
+    checkBossDefeat();
 
     if (m_waveManager != nullptr) {
         m_waveManager->advanceFrame(waveConfig.updateIntervalMs);
@@ -903,6 +968,14 @@ void GameMainPage::handleBattleTick()
             m_waveManager->completeCurrentRound();
         }
     }
+
+    if (m_waveManager != nullptr && m_waveManager->currentRound() >= 8 && !m_backgroundTechActive) {
+        m_backgroundTechActive = true;
+        updateBattleBackground();
+        m_currentNormalBgm = QStringLiteral("ser3_alien");
+        switchBgMusic(QStringLiteral("ser3_alien"));
+    }
+
     updatePlayerVisualState();
     updateStatusText();
 }
@@ -990,9 +1063,14 @@ void GameMainPage::updatePlayerVisualState()
 
     m_playerAvatar->setPos(m_player->worldPosition());
     m_playerAvatar->setAimDirection(m_mouseScenePosition - m_player->worldPosition());
-    m_playerAvatar->setHitFlash(kPlayerDamageCooldownMs <= 0.0F
+    m_playerAvatar->setHitFlash(m_playerDamageCooldownRemainingMs <= 0.0F
                                     ? 0.0
                                     : m_playerDamageCooldownRemainingMs / kPlayerDamageCooldownMs);
+
+    const float healthRatio = m_player->currentHealth() / std::max(1.0F, m_player->maxHealth());
+    m_playerAvatar->setHealthRatio(healthRatio);
+    m_playerAvatar->setIsDashing(m_player->isDashing());
+    m_playerAvatar->setIsHurt(m_playerDamageCooldownRemainingMs > 0.0F);
 }
 
 void GameMainPage::updateHealthBarStyle(float healthRatio)
@@ -1047,220 +1125,32 @@ void GameMainPage::applyDynamicDifficulty(int wave, EnemyData *enemy)
 
 void GameMainPage::updateStatusText()
 {
-    if (m_factory == nullptr) {
-        m_statusLabel->setText(QStringLiteral("\u9636\u6bb52\u6218\u6597\u9875\uff1a\u5de5\u5382\u5c1a\u672a\u6ce8\u5165\uff0c\u65e0\u6cd5\u521b\u5efa\u6218\u6597\u5bf9\u8c61\u3002"));
-        m_roundLabel->setText(QStringLiteral("--"));
-        m_levelLabel->setText(QStringLiteral("--"));
-        m_experienceLabel->setText(QStringLiteral("--"));
-        m_weaponLabel->setText(QStringLiteral("--"));
-        m_attackLabel->setText(QStringLiteral("--"));
-        m_attackSpeedLabel->setText(QStringLiteral("--"));
-        m_moveSpeedLabel->setText(QStringLiteral("--"));
-        m_enemyCountLabel->setText(QStringLiteral("0"));
-        m_bulletCountLabel->setText(QStringLiteral("0"));
-        m_attributeChangeLabel->setText(QStringLiteral("\u7b49\u5f85\u521d\u59cb\u5316"));
-        m_traitsLabel->setText(QStringLiteral("\u672a\u83b7\u5f97"));
-        m_aimHintLabel->setText(QStringLiteral("\u7b49\u5f85\u521d\u59cb\u5316"));
-        m_waveProgressBar->setValue(0);
+    if (m_factory == nullptr || !m_hasSelectedClass || m_player == nullptr) {
         m_healthBar->setValue(0);
         m_healthBar->setFormat(QStringLiteral("0 / 0"));
         updateHealthBarStyle(1.0F);
-        if (m_upgradeButton != nullptr) {
-            m_upgradeButton->setEnabled(false);
-            m_upgradeButton->setText(QStringLiteral("\u5f53\u524d\u65e0\u5f85\u9009\u5347\u7ea7"));
-        }
-        return;
-    }
-
-    if (!m_hasSelectedClass || m_player == nullptr) {
-        m_statusLabel->setText(QStringLiteral("\u9636\u6bb52\u6218\u6597\u9875\uff1a\u7b49\u5f85\u804c\u4e1a\u9009\u62e9\u540e\u521b\u5efa\u73a9\u5bb6\u3001\u654c\u4eba\u4e0e\u5b50\u5f39\u3002"));
-        m_roundLabel->setText(QStringLiteral("\u7b2c1/%1\u6ce2").arg(GameConfig::kWaveConfig.maxRounds));
         m_levelLabel->setText(QStringLiteral("Lv.0"));
-        m_experienceLabel->setText(QStringLiteral("0 / %1").arg(GameConfig::experienceThresholdForLevel(1)));
-        m_weaponLabel->setText(QStringLiteral("--"));
-        m_attackLabel->setText(QStringLiteral("--"));
-        m_attackSpeedLabel->setText(QStringLiteral("--"));
-        m_moveSpeedLabel->setText(QStringLiteral("--"));
-        m_enemyCountLabel->setText(QStringLiteral("0"));
-        m_bulletCountLabel->setText(QStringLiteral("0"));
-        m_attributeChangeLabel->setText(QStringLiteral("\u6682\u65e0\u5c5e\u6027\u53d8\u5316"));
-        m_traitsLabel->setText(QStringLiteral("\u672a\u83b7\u5f97"));
-        m_aimHintLabel->setText(QStringLiteral("\u9f20\u6807\u7784\u51c6"));
+        m_expBar->setValue(0);
+        m_leftExpBar->setValue(0);
+        m_leftExpBar->setFormat(QStringLiteral("经验 0/0"));
         m_waveProgressBar->setValue(0);
-        m_healthBar->setValue(0);
-        m_healthBar->setFormat(QStringLiteral("0 / 0"));
-        updateHealthBarStyle(1.0F);
-        if (m_upgradeButton != nullptr) {
-            m_upgradeButton->setEnabled(false);
-            m_upgradeButton->setText(QStringLiteral("\u5f53\u524d\u65e0\u5f85\u9009\u5347\u7ea7"));
-        }
+        m_waveProgressBar->setFormat(QString());
         return;
     }
 
-    const auto enemyCount = m_enemies.size();
-    const auto bulletCount = m_bullets.size();
     const auto currentHealth = m_player->currentHealth();
     const auto maxHealth = std::max(1.0F, m_player->maxHealth());
     const auto healthRatio = currentHealth / maxHealth;
-    const auto *classConfig = m_factory->playerClassConfig(m_selectedClassId);
-    const auto *weaponConfig = m_factory->weaponConfig(m_player->weaponId());
-    const auto weaponName = weaponConfig != nullptr ? weaponConfig->displayName : QStringLiteral("\u672a\u77e5\u6b66\u5668");
-    float damageMultiplier = 1.0F;
-    float defenseMultiplier = 1.0F;
-    float speedMultiplier = 1.0F;
-
-    const QList<TraitId> ownedTraits = m_upgradeResolver != nullptr
-        ? m_upgradeResolver->ownedTraits()
-        : QList<TraitId>{};
-    const QMap<TraitId, int> traitCounts = m_upgradeResolver != nullptr
-        ? m_upgradeResolver->traitCounts()
-        : QMap<TraitId, int>{};
-
-    for (const TraitId traitId : ownedTraits) {
-        const TraitConfig *traitConfig = GameConfig::findTraitConfig(traitId);
-        if (traitConfig == nullptr) {
-            continue;
-        }
-        damageMultiplier *= traitConfig->damageMultiplier;
-        defenseMultiplier *= traitConfig->defenseMultiplier;
-        speedMultiplier *= traitConfig->speedMultiplier;
-    }
-
-    const auto baseAttackDamage = weaponConfig != nullptr ? weaponConfig->baseDamage : 0.0F;
-    const auto baseAttackSpeed = weaponConfig != nullptr && weaponConfig->fireIntervalMs > 0.0F
-        ? 1000.0F / weaponConfig->fireIntervalMs
-        : 0.0F;
-    const auto effectiveAttackDamage = baseAttackDamage * damageMultiplier;
-    const auto effectiveAttackSpeed = baseAttackSpeed * speedMultiplier;
-    const auto baseMoveSpeed = classConfig != nullptr ? classConfig->moveSpeed : 0.0F;
-
-    QStringList attributeChanges;
-    if (!qFuzzyCompare(damageMultiplier, 1.0F)) {
-        attributeChanges.push_back(QStringLiteral("\u653b\u51fb %1").arg(signedPercentText(damageMultiplier)));
-    }
-    if (!qFuzzyCompare(speedMultiplier, 1.0F)) {
-        attributeChanges.push_back(QStringLiteral("\u653b\u901f %1").arg(signedPercentText(speedMultiplier)));
-        attributeChanges.push_back(QStringLiteral("\u79fb\u901f %1").arg(signedPercentText(speedMultiplier)));
-    }
-    if (defenseMultiplier > 1.0F) {
-        attributeChanges.push_back(QStringLiteral("\u51cf\u4f24 %1").arg(reductionPercentText(defenseMultiplier)));
-    }
-
-    const QString hitCooldownText = m_playerDamageCooldownRemainingMs > 0.0F
-        ? QStringLiteral("\u53d7\u51fb\u95ea\u70c1")
-        : QStringLiteral("\u7a33\u5b9a");
     const int currentRound = m_waveManager != nullptr ? m_waveManager->currentRound() : 1;
     const int currentLevel = m_waveManager != nullptr ? m_waveManager->currentLevel() : 0;
     const int currentExperience = m_waveManager != nullptr ? m_waveManager->currentExperience() : 0;
     const int experienceToNext = m_waveManager != nullptr ? m_waveManager->experienceToNextLevel() : 0;
     const int elapsedRoundMs = m_waveManager != nullptr ? m_waveManager->elapsedRoundMs() : 0;
-    const bool hasPendingUpgrade = m_waveManager != nullptr && m_waveManager->hasPendingUpgrade();
-
-    QString battleStateText = QStringLiteral("\u975e\u6218\u6597");
-    switch (m_battleState) {
-    case BattleFlowState::Inactive:
-        battleStateText = QStringLiteral("\u975e\u6218\u6597");
-        break;
-    case BattleFlowState::Battle:
-        battleStateText = QStringLiteral("\u6218\u6597\u4e2d");
-        break;
-    case BattleFlowState::Upgrade:
-        battleStateText = QStringLiteral("\u5347\u7ea7\u4e2d");
-        break;
-    }
-
-    QStringList ownedTraitNames;
-    for (const TraitId traitId : ownedTraits) {
-        const TraitConfig *traitConfig = GameConfig::findTraitConfig(traitId);
-        const int traitLevel = traitCounts.value(traitId, 1);
-        const QString displayName = traitConfig != nullptr ? traitConfig->displayName : QStringLiteral("\u672a\u77e5\u7279\u6027");
-        ownedTraitNames.push_back(traitLevel > 1
-                                      ? QStringLiteral("%1 Lv.%2").arg(displayName, QString::number(traitLevel))
-                                      : displayName);
-    }
-
-    const bool clearingRemainingEnemies = elapsedRoundMs >= GameConfig::kWaveConfig.roundDurationMs
-        && enemyCount > 0
-        && !hasPendingUpgrade;
-    QString statusText;
-    if (hasPendingUpgrade) {
-        statusText = QStringLiteral("\u9636\u6bb52\u6218\u6597\u9875\uff1a\u5f53\u524d\u72b6\u6001[%1\uff5c%2]\uff0c\u89d2\u8272\u5df2\u5347\u7ea7\uff0c\u5fc5\u987b\u5148\u5b8c\u6210\u5c5e\u6027\u9009\u62e9\u624d\u80fd\u7ee7\u7eed\u3002")
-                         .arg(hitCooldownText, battleStateText);
-    } else if (clearingRemainingEnemies) {
-        statusText = QStringLiteral("\u9636\u6bb52\u6218\u6597\u9875\uff1a\u5f53\u524d\u72b6\u6001[%1\uff5c%2]\uff0c\u672c\u6ce2\u5237\u602a\u5df2\u7ed3\u675f\uff0c\u9700\u6e05\u5149\u5269\u4f59 %3 \u4e2a\u654c\u4eba\u540e\u624d\u80fd\u8fdb\u5165\u4e0b\u4e00\u9636\u6bb5\u3002")
-                         .arg(hitCooldownText, battleStateText, QString::number(enemyCount));
-    } else {
-        statusText = QStringLiteral("\u9636\u6bb52\u6218\u6597\u9875\uff1a\u5f53\u524d\u72b6\u6001[%1\uff5c%2\uff5c\u65e0\u5f85\u5347\u7ea7]\u3002")
-                         .arg(hitCooldownText, battleStateText);
-    }
-    m_statusLabel->setText(statusText);
-    m_roundLabel->setText(QStringLiteral("\u7b2c%1/%2\u6ce2")
-                              .arg(QString::number(currentRound),
-                                   QString::number(GameConfig::kWaveConfig.maxRounds)));
-    m_levelLabel->setText(QStringLiteral("Lv.%1").arg(QString::number(currentLevel)));
-    m_experienceLabel->setText(experienceToNext > 0
-                                   ? QStringLiteral("%1\uff08\u8ddd\u4e0b\u7ea7 %2\uff09")
-                                         .arg(QString::number(currentExperience),
-                                              QString::number(experienceToNext))
-                                   : QStringLiteral("%1\uff08\u5df2\u6ee1\u7ea7\uff09")
-                                         .arg(QString::number(currentExperience)));
-    QString weaponLabelText = weaponName;
-    QStringList weaponUpgradeTags;
-    if (m_weapon != nullptr) {
-        if (m_weapon->extraProjectiles() > 0) {
-            weaponUpgradeTags.push_back(QStringLiteral("+%1\u5f39\u9053").arg(m_weapon->extraProjectiles()));
-        }
-        if (m_weapon->pierceCount() > 0) {
-            weaponUpgradeTags.push_back(QStringLiteral("\u7a7f\u900f%1").arg(m_weapon->pierceCount()));
-        }
-        if (m_weapon->bulletSizeScale() > 1.0F) {
-            weaponUpgradeTags.push_back(QStringLiteral("\u5f39\u4f53%1%").arg(
-                QString::number(m_weapon->bulletSizeScale() * 100.0F, 'f', 0)));
-        }
-        if (m_weapon->comboInterval() > 0) {
-            weaponUpgradeTags.push_back(QStringLiteral("\u8fde\u51fb/%1").arg(m_weapon->comboInterval()));
-        }
-        if (m_weapon->rangeMultiplier() > 1.0F) {
-            weaponUpgradeTags.push_back(QStringLiteral("\u5c04\u7a0b%1%").arg(
-                QString::number(m_weapon->rangeMultiplier() * 100.0F, 'f', 0)));
-        }
-    }
-    if (!weaponUpgradeTags.isEmpty()) {
-        weaponLabelText += QStringLiteral(" [+%1]").arg(weaponUpgradeTags.join(QStringLiteral(", ")));
-    }
-    m_weaponLabel->setText(weaponLabelText);
-    m_attackLabel->setText(QStringLiteral("%1 / \u53d1\uff08\u57fa\u51c6 %2\uff09")
-                               .arg(QString::number(effectiveAttackDamage, 'f', 1),
-                                    QString::number(baseAttackDamage, 'f', 1)));
-    m_attackSpeedLabel->setText(QStringLiteral("%1 \u53d1/\u79d2\uff08\u57fa\u51c6 %2\uff09")
-                                    .arg(QString::number(effectiveAttackSpeed, 'f', 2),
-                                         QString::number(baseAttackSpeed, 'f', 2)));
-    m_moveSpeedLabel->setText(QStringLiteral("%1\uff08\u57fa\u51c6 %2\uff09")
-                                  .arg(QString::number(m_player->moveSpeed(), 'f', 0),
-                                       QString::number(baseMoveSpeed, 'f', 0)));
-    m_enemyCountLabel->setText(QString::number(enemyCount));
-    m_bulletCountLabel->setText(QString::number(bulletCount));
-
-    const QString lastUpgradeSummary = m_upgradeResolver != nullptr
-        ? m_upgradeResolver->lastUpgradeSummary()
-        : QString{};
-    const QString passiveSummary = attributeChanges.isEmpty()
-        ? QStringLiteral("\u7d2f\u8ba1\u5c5e\u6027\uff1a\u6682\u65e0\u53d8\u5316")
-        : QStringLiteral("\u7d2f\u8ba1\u5c5e\u6027\uff1a%1").arg(attributeChanges.join(QStringLiteral(" \uff5c ")));
-    m_attributeChangeLabel->setText(lastUpgradeSummary.isEmpty()
-                                        ? passiveSummary
-                                        : QStringLiteral("%1<br/><span style='color:#9aa8bc;'>%2</span>")
-                                              .arg(lastUpgradeSummary, passiveSummary));
-    m_traitsLabel->setText(ownedTraitNames.isEmpty() ? QStringLiteral("\u672a\u83b7\u5f97")
-                                                     : ownedTraitNames.join(QStringLiteral(" / ")));
-    m_aimHintLabel->setText(m_firePressed ? QStringLiteral("\u9f20\u6807\u7784\u51c6 \u00b7 \u6301\u7eed\u653b\u51fb")
-                                          : QStringLiteral("\u9f20\u6807\u7784\u51c6 \u00b7 \u677e\u5f00\u5f85\u673a"));
-    if (m_upgradeButton != nullptr) {
-        m_upgradeButton->setEnabled(hasPendingUpgrade);
-        m_upgradeButton->setText(hasPendingUpgrade
-                                     ? QStringLiteral("\u5fc5\u987b\u9009\u62e9\u5347\u7ea7")
-                                     : QStringLiteral("\u5f53\u524d\u65e0\u5f85\u9009\u5347\u7ea7"));
-    }
+    const int prevLevelExp = currentLevel >= 1 ? GameConfig::experienceThresholdForLevel(currentLevel - 1) : 0;
+    const int currLevelRequired = experienceToNext;
+    const int levelProgress = std::max(0, currentExperience - prevLevelExp);
+    const int enemyCount = static_cast<int>(m_enemies.size());
+    const bool clearingRemaining = elapsedRoundMs >= GameConfig::kWaveConfig.roundDurationMs && enemyCount > 0;
 
     m_healthBar->setRange(0, static_cast<int>(std::ceil(maxHealth)));
     m_healthBar->setValue(static_cast<int>(std::round(currentHealth)));
@@ -1269,14 +1159,411 @@ void GameMainPage::updateStatusText()
                                .arg(QString::number(maxHealth, 'f', 0)));
     updateHealthBarStyle(healthRatio);
 
+    m_levelLabel->setText(QStringLiteral("Lv.%1").arg(QString::number(currentLevel)));
+
+    if (currLevelRequired > 0) {
+        m_expBar->setRange(0, currLevelRequired);
+        m_expBar->setValue(std::min(levelProgress, currLevelRequired));
+        m_expBar->setFormat(QStringLiteral("\u7ecf\u9a8c %1/%2").arg(levelProgress).arg(currLevelRequired));
+    } else {
+        m_expBar->setRange(0, 1);
+        m_expBar->setValue(1);
+        m_expBar->setFormat(QStringLiteral("\u5df2\u6ee1\u7ea7"));
+    }
+    m_expBar->setVisible(true);
+
+    if (m_weaponIconLabel != nullptr) {
+        QString weaponIconPath;
+        switch (m_selectedClassId) {
+        case PlayerClassId::Warrior:
+            weaponIconPath = QStringLiteral(":/weapon/crossed_swords_3d.png");
+            break;
+        case PlayerClassId::Ranger:
+            weaponIconPath = QStringLiteral(":/weapon/bow_and_arrow_3d.png");
+            break;
+        case PlayerClassId::Caster:
+            weaponIconPath = QStringLiteral(":/weapon/magic_wand_3d.png");
+            break;
+        }
+        QPixmap wepPix(weaponIconPath);
+        if (!wepPix.isNull()) {
+            m_weaponIconLabel->setPixmap(wepPix.scaled(44, 44, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
+    }
+
+    if (currLevelRequired > 0) {
+        m_leftExpBar->setRange(0, currLevelRequired);
+        m_leftExpBar->setValue(std::min(levelProgress, currLevelRequired));
+        m_leftExpBar->setFormat(QStringLiteral("\u7ecf\u9a8c %1/%2").arg(levelProgress).arg(currLevelRequired));
+    } else {
+        m_leftExpBar->setRange(0, 1);
+        m_leftExpBar->setValue(1);
+        m_leftExpBar->setFormat(QStringLiteral("\u5df2\u6ee1\u7ea7"));
+    }
+
+    // Rebuild trait icons
+    QLayoutItem *traitItem;
+    while ((traitItem = m_traitIconsLayout->takeAt(0)) != nullptr) {
+        if (traitItem->widget() != nullptr) {
+            traitItem->widget()->deleteLater();
+        }
+        delete traitItem;
+    }
+    const QList<TraitId> ownedTraits = m_upgradeResolver != nullptr
+        ? m_upgradeResolver->ownedTraits()
+        : QList<TraitId>{};
+    for (const TraitId tid : ownedTraits) {
+        const TraitConfig *cfg = GameConfig::findTraitConfig(tid);
+        if (cfg == nullptr) continue;
+        const QString iconPath = traitIconForId(tid);
+        if (iconPath.isEmpty()) continue;
+        QPixmap icon(iconPath);
+        if (icon.isNull()) continue;
+        auto *iconLabel = new QLabel(m_leftHudPanel);
+        iconLabel->setFixedSize(30, 30);
+        iconLabel->setPixmap(icon.scaled(28, 28, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        iconLabel->setToolTip(cfg->displayName);
+        iconLabel->setStyleSheet(QStringLiteral("background: transparent;"));
+        m_traitIconsLayout->addWidget(iconLabel);
+    }
+    m_traitIconsLayout->addStretch();
+
     m_waveProgressBar->setRange(0, GameConfig::kWaveConfig.roundDurationMs);
-    m_waveProgressBar->setFormat(clearingRemainingEnemies
-                                     ? QStringLiteral("\u7b2c%1/%2\u6ce2 \u6e05\u573a\u4e2d\uff08\u5269\u4f59\u654c\u4eba %3\uff09")
+    m_waveProgressBar->setFormat(clearingRemaining
+                                     ? QStringLiteral("\u7b2c%1/%2\u6ce2 \u6e05\u573a\u4e2d\u2026")
                                            .arg(QString::number(currentRound),
-                                                QString::number(GameConfig::kWaveConfig.maxRounds),
-                                                QString::number(enemyCount))
+                                                QString::number(GameConfig::kWaveConfig.maxRounds))
                                      : QStringLiteral("\u7b2c%1/%2\u6ce2 %p%")
                                            .arg(QString::number(currentRound),
                                                 QString::number(GameConfig::kWaveConfig.maxRounds)));
     m_waveProgressBar->setValue(std::min(elapsedRoundMs, GameConfig::kWaveConfig.roundDurationMs));
+    m_waveProgressBar->setVisible(true);
+
+    positionHudElements();
+}
+
+void GameMainPage::setupBgMusic()
+{
+    m_audioOutput = new QAudioOutput(this);
+    m_audioOutput->setVolume(0.5F);
+    m_bgMusicPlayer = new QMediaPlayer(this);
+    m_bgMusicPlayer->setAudioOutput(m_audioOutput);
+    m_bgMusicPlayer->setLoops(QMediaPlayer::Infinite);
+}
+
+void GameMainPage::updateBattleBackground()
+{
+    const QString imageName = m_backgroundTechActive
+        ? QStringLiteral("background_images/tech.jpg")
+        : QStringLiteral("background_images/magic.jpg");
+
+    const QString resourcePath = QStringLiteral(":/%1").arg(imageName);
+    const QPixmap bg(resourcePath);
+    if (m_view != nullptr) {
+        m_view->setBackgroundImage(bg);
+    }
+}
+
+void GameMainPage::switchBgMusic(const QString &trackName)
+{
+    if (m_bgMusicPlayer == nullptr) {
+        return;
+    }
+
+    const QString resourcePath = QStringLiteral("qrc:/musics/%1.mp3").arg(trackName);
+    const QUrl url(resourcePath);
+
+    if (m_bgMusicPlayer->source() == url && m_bgMusicPlayer->playbackState() == QMediaPlayer::PlayingState) {
+        return;
+    }
+
+    m_bgMusicPlayer->stop();
+    m_bgMusicPlayer->setSource(url);
+    m_bgMusicPlayer->play();
+}
+
+void GameMainPage::checkBossDefeat()
+{
+    if (!m_bossIsActive) {
+        return;
+    }
+
+    bool bossAlive = false;
+    for (const auto &enemy : std::as_const(m_enemies)) {
+        if (enemy.data != nullptr && !enemy.data->isDefeated()
+            && enemy.data->id() == m_currentBossId) {
+            bossAlive = true;
+            break;
+        }
+    }
+
+    if (bossAlive) {
+        return;
+    }
+
+    const EnemyId defeatedBossId = m_currentBossId;
+
+    if (m_waveManager != nullptr) {
+        m_waveManager->notifyBossDefeated();
+    }
+
+    m_bossIsActive = false;
+    m_currentBossId = EnemyId::Ogre;
+
+    switch (defeatedBossId) {
+    case EnemyId::DemonLord:
+        if (!m_demonLordDefeated) {
+            m_demonLordDefeated = true;
+            m_currentNormalBgm = QStringLiteral("sery2_skeleon (mp3cut)");
+            switchBgMusic(m_currentNormalBgm);
+        }
+        break;
+    case EnemyId::BoneLord:
+        switchBgMusic(m_currentNormalBgm);
+        break;
+    case EnemyId::UFO:
+        break;
+    case EnemyId::AlienPilot:
+        switchBgMusic(m_currentNormalBgm);
+        break;
+    default:
+        switchBgMusic(m_currentNormalBgm);
+        break;
+    }
+}
+
+void GameMainPage::playHitSound()
+{
+    if (m_hitSoundPlayer != nullptr) {
+        m_hitSoundPlayer->setPosition(0);
+        m_hitSoundPlayer->play();
+    }
+}
+
+void GameMainPage::playKillSound()
+{
+    if (m_killSoundPlayer != nullptr) {
+        m_killSoundPlayer->setPosition(0);
+        m_killSoundPlayer->play();
+    }
+}
+
+void GameMainPage::positionHudElements()
+{
+    const int w = width();
+    const int h = height();
+    static constexpr int kHudMargin = 14;
+    static constexpr int kRightHudW = 180;
+    static constexpr int kLeftHudW = 160;
+
+    if (m_rightHudPanel != nullptr) {
+        m_rightHudPanel->setGeometry(w - kRightHudW - kHudMargin, kHudMargin,
+                                     kRightHudW, m_rightHudPanel->sizeHint().height());
+    }
+
+    if (m_leftHudPanel != nullptr) {
+        m_leftHudPanel->setGeometry(kHudMargin, kHudMargin,
+                                    kLeftHudW, m_leftHudPanel->sizeHint().height());
+    }
+
+    if (m_waveProgressBar != nullptr) {
+        const int barW = std::min(440, w - kLeftHudW - kRightHudW - kHudMargin * 6);
+        const int barX = (w - barW) / 2;
+        m_waveProgressBar->setGeometry(barX, kHudMargin, barW, 22);
+    }
+
+    if (m_enemyDirector != nullptr) {
+        m_enemyDirector->positionBossBarFixed((w - 300) / 2, kHudMargin + 28);
+    }
+
+    if (m_upgradeOverlay != nullptr && m_upgradeOverlay->isVisible()) {
+        m_upgradeOverlay->setGeometry(0, 0, w, h);
+    }
+}
+
+void GameMainPage::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    positionHudElements();
+}
+
+void GameMainPage::showUpgradeOverlay()
+{
+    if (m_waveManager == nullptr || m_upgradeOverlay == nullptr) return;
+    if (m_upgradeOverlay->isVisible()) return;
+
+    m_pendingUpgradeOptions = m_waveManager->currentUpgradeOptions();
+    if (m_pendingUpgradeOptions.empty()) return;
+
+    buildUpgradeCards(m_pendingUpgradeOptions);
+    m_selectedUpgradeIndex = -1;
+    if (m_upgradeConfirmButton != nullptr) {
+        m_upgradeConfirmButton->setEnabled(false);
+    }
+
+    m_upgradeOverlay->setGeometry(0, 0, width(), height());
+    m_upgradeOverlay->raise();
+    m_upgradeOverlay->setVisible(true);
+
+    auto *anim = new QVariantAnimation(m_upgradeOverlay);
+    anim->setDuration(350);
+    anim->setStartValue(0.0);
+    anim->setEndValue(1.0);
+    anim->setEasingCurve(QEasingCurve::OutCubic);
+    connect(anim, &QVariantAnimation::valueChanged, this, [this](const QVariant &value) {
+        const int alpha = qBound(0, static_cast<int>(value.toReal() * 0.88 * 255.0), 255);
+        m_upgradeOverlay->setStyleSheet(
+            QStringLiteral("background: rgba(10, 12, 18, %1);").arg(alpha));
+    });
+    connect(anim, &QVariantAnimation::finished, this, [this]() {
+        m_upgradeOverlay->setStyleSheet(
+            QStringLiteral("background: rgba(10, 12, 18, 0.88);"));
+    });
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void GameMainPage::hideUpgradeOverlay()
+{
+    if (m_upgradeOverlay == nullptr) return;
+
+    auto *anim = new QVariantAnimation(m_upgradeOverlay);
+    anim->setDuration(280);
+    anim->setStartValue(1.0);
+    anim->setEndValue(0.0);
+    anim->setEasingCurve(QEasingCurve::InCubic);
+    connect(anim, &QVariantAnimation::valueChanged, this, [this](const QVariant &value) {
+        const int alpha = qBound(0, static_cast<int>(value.toReal() * 0.88 * 255.0), 255);
+        m_upgradeOverlay->setStyleSheet(
+            QStringLiteral("background: rgba(10, 12, 18, %1);").arg(alpha));
+    });
+    connect(anim, &QVariantAnimation::finished, this, [this]() {
+        m_upgradeOverlay->setVisible(false);
+    });
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void GameMainPage::buildUpgradeCards(const UpgradeOptions &options)
+{
+    while (!m_upgradeCards.isEmpty()) {
+        QFrame *card = m_upgradeCards.takeLast();
+        m_upgradeCardsGrid->removeWidget(card);
+        card->deleteLater();
+    }
+
+    const int count = static_cast<int>(options.size());
+    if (count < 1) return;
+
+    const int topCount = std::min(3, count);
+    const int bottomCount = count - topCount;
+
+    auto buildCard = [this](int index, const UpgradeOption &opt) -> QFrame * {
+        auto *card = new QFrame(m_upgradeOverlay);
+        card->setFixedSize(162, 196);
+        card->setCursor(Qt::PointingHandCursor);
+        card->setStyleSheet(QStringLiteral(
+            "QFrame { background: rgba(40,48,62,0.92); border: 2px solid rgba(75,85,105,0.5);"
+            "border-radius: 12px; }"
+            "QFrame:hover { border-color: #6b88b8; background: rgba(50,60,78,0.92); }"
+            "QFrame[selected=\"true\"] { border-color: #4b7bec; border-width: 2px;"
+            "background: rgba(35,45,65,0.95); }"));
+
+        auto *layout = new QVBoxLayout(card);
+        layout->setContentsMargins(6, 10, 6, 10);
+        layout->setSpacing(6);
+        layout->setAlignment(Qt::AlignCenter);
+
+        auto *iconLabel = new QLabel(card);
+        iconLabel->setFixedSize(56, 56);
+        iconLabel->setAlignment(Qt::AlignCenter);
+        QPixmap icon(opt.iconPath);
+        if (!icon.isNull()) {
+            iconLabel->setPixmap(icon.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
+        iconLabel->setStyleSheet(QStringLiteral("background: transparent;"));
+        layout->addWidget(iconLabel, 0, Qt::AlignCenter);
+
+        auto *nameLabel = new QLabel(opt.displayName, card);
+        nameLabel->setAlignment(Qt::AlignCenter);
+        nameLabel->setWordWrap(true);
+        nameLabel->setStyleSheet(QStringLiteral(
+            "color: #f0f4fa; font-size: 14px; font-weight: 700; background: transparent;"));
+        layout->addWidget(nameLabel);
+
+        auto *descLabel = new QLabel(opt.summary, card);
+        descLabel->setAlignment(Qt::AlignCenter);
+        descLabel->setWordWrap(true);
+        descLabel->setStyleSheet(QStringLiteral(
+            "color: #93a0b4; font-size: 11px; background: transparent;"));
+        layout->addWidget(descLabel);
+        layout->addStretch();
+
+        card->setProperty("cardIndex", index);
+        card->installEventFilter(this);
+
+        return card;
+    };
+
+    for (int i = 0; i < topCount; ++i) {
+        auto *card = buildCard(i, options[static_cast<size_t>(i)]);
+        m_upgradeCards.append(card);
+        m_upgradeCardsGrid->addWidget(card, 0, i, Qt::AlignCenter);
+    }
+
+    for (int i = 0; i < bottomCount; ++i) {
+        const int idx = topCount + i;
+        auto *card = buildCard(idx, options[static_cast<size_t>(idx)]);
+        m_upgradeCards.append(card);
+        m_upgradeCardsGrid->addWidget(card, 1, i, Qt::AlignCenter);
+    }
+}
+
+void GameMainPage::onUpgradeCardClicked(int index)
+{
+    if (index < 0 || index >= m_upgradeCards.size()) return;
+
+    m_selectedUpgradeIndex = index;
+
+    for (int i = 0; i < m_upgradeCards.size(); ++i) {
+        m_upgradeCards[i]->setProperty("selected", i == index);
+        m_upgradeCards[i]->style()->unpolish(m_upgradeCards[i]);
+        m_upgradeCards[i]->style()->polish(m_upgradeCards[i]);
+    }
+
+    if (m_upgradeConfirmButton != nullptr) {
+        m_upgradeConfirmButton->setEnabled(true);
+    }
+}
+
+void GameMainPage::confirmUpgrade()
+{
+    if (m_selectedUpgradeIndex < 0
+        || static_cast<size_t>(m_selectedUpgradeIndex) >= m_pendingUpgradeOptions.size()
+        || m_waveManager == nullptr) {
+        return;
+    }
+
+    const UpgradeOption &opt = m_pendingUpgradeOptions[static_cast<size_t>(m_selectedUpgradeIndex)];
+    m_waveManager->confirmUpgradeSelection(opt);
+
+    if (opt.kind == UpgradeOptionKind::Trait) {
+        applyTrait(opt.traitId);
+        emit traitAcquired(opt.traitId);
+    } else if (opt.kind == UpgradeOptionKind::Weapon) {
+        applyWeaponUpgrade(opt.weaponUpgradeId);
+        emit statsChanged();
+    } else if (opt.kind == UpgradeOptionKind::Stat) {
+        const QStringList parts = opt.optionId.split('.');
+        if (parts.size() >= 2) {
+            bool ok = false;
+            const int styleInt = parts.at(1).toInt(&ok);
+            if (ok) {
+                setActiveBulletStyle(static_cast<BulletStyle>(styleInt));
+                emit statsChanged();
+            }
+        }
+    }
+
+    hideUpgradeOverlay();
+    resumeBattleState();
+    updateStatusText();
 }

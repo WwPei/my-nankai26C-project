@@ -8,10 +8,10 @@
 struct WaveConfig {
     int roundDurationMs {30000};
     int updateIntervalMs {16};
-    int maxConcurrentEnemies {15};
+    int maxConcurrentEnemies {22};
     int maxRounds {10};
-    int initialEnemyCount {5};
-    int enemySpawnIntervalMs {2200};
+    int initialEnemyCount {6};
+    int enemySpawnIntervalMs {850};
     int experiencePerEnemyDefeat {10};
     int upgradeSelectionCount {5};
 };

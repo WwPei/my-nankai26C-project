@@ -1,7 +1,3 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: BasicEnemyData 类声明 - 敌人数据的具体实现
-// 最后修改: 2026-05-07
-
 #pragma once
 
 #include <QObject>
