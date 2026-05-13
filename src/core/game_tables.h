@@ -1,7 +1,3 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: 游戏配置表 - 经验阈值、波次经验倍率、职业/武器/敌人/Trait配置
-// 最后修改: 2026-05-09
-
 #pragma once
 
 #include "game_structs.h"
@@ -14,20 +10,20 @@ inline const WaveConfig kWaveConfig {};
 inline const QList<int> kExperienceThresholds {
     0,
     0,
-    10,
-    50,
-    140,
-    300,
-    550,
-    910,
-    1400,
-    2040,
-    2850,
-    3850,
-    5060,
-    6500,
-    8190,
-    10150
+    8,
+    38,
+    105,
+    225,
+    412,
+    682,
+    1050,
+    1530,
+    2140,
+    2890,
+    3800,
+    4880,
+    6145,
+    7615
 };
 
 [[nodiscard]] inline float waveExpMultiplier(int waveNumber) {
@@ -199,7 +195,7 @@ inline const QList<EnemyConfig> kEnemies{
         EnemyBehavior::ShootAndMove,
         100.0F, 0.0F, 0.0F, 1.0F, 0.0F,
         1800.0F, 3, 170.0F, 5.0F,
-        150.0F
+        0.0F
     },
     {
         EnemyId::BoneLord,
@@ -220,8 +216,8 @@ inline const QList<EnemyConfig> kEnemies{
         QStringLiteral(":/images/robot_3d.png"),
         EnemyBehavior::ShootAndMove,
         200.0F, 0.0F, 0.0F, 1.0F, 0.0F,
-        2200.0F, 1, 190.0F, 7.0F,
-        true, false
+        2200.0F, 3, 190.0F, 7.0F,
+        0.0F, false
     },
     {
         EnemyId::XenoBeast,
@@ -421,7 +417,7 @@ inline const UpgradeOptions kUpgradeOptions {
         QStringLiteral("trait.quick_hands"),
         UpgradeOptionKind::Trait,
         QStringLiteral("快手"),
-        QStringLiteral("提高攻击节奏，作为阶段2升级选项基线。"),
+        QStringLiteral("提高攻击节奏"),
         TraitId::QuickHands,
         WeaponUpgradeId::ExtraProjectiles,
         UpgradeRarity::Common,
@@ -432,7 +428,7 @@ inline const UpgradeOptions kUpgradeOptions {
         QStringLiteral("trait.thick_skin"),
         UpgradeOptionKind::Trait,
         QStringLiteral("厚皮"),
-        QStringLiteral("提高生存能力，作为阶段2升级选项基线。"),
+        QStringLiteral("提高生存能力"),
         TraitId::ThickSkin,
         WeaponUpgradeId::ExtraProjectiles,
         UpgradeRarity::Common,
@@ -443,7 +439,7 @@ inline const UpgradeOptions kUpgradeOptions {
         QStringLiteral("trait.lucky_shot"),
         UpgradeOptionKind::Trait,
         QStringLiteral("幸运射击"),
-        QStringLiteral("提高伤害上限，作为阶段2升级选项基线。"),
+        QStringLiteral("提高伤害上限"),
         TraitId::LuckyShot,
         WeaponUpgradeId::ExtraProjectiles,
         UpgradeRarity::Common,
@@ -453,21 +449,21 @@ inline const UpgradeOptions kUpgradeOptions {
 };
 
 inline const UpgradeOptions kAllUpgradeOptions{
-    {QStringLiteral("trait.quick_hands.1"), UpgradeOptionKind::Trait, QStringLiteral("快手"), QStringLiteral("提高攻击节奏"), TraitId::QuickHands, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/quick_hands.png")},
-    {QStringLiteral("trait.thick_skin.1"), UpgradeOptionKind::Trait, QStringLiteral("厚皮"), QStringLiteral("提高生存能力"), TraitId::ThickSkin, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/thick_skin.png")},
-    {QStringLiteral("trait.lucky_shot.1"), UpgradeOptionKind::Trait, QStringLiteral("幸运射击"), QStringLiteral("提高伤害上限"), TraitId::LuckyShot, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/lucky_shot.png")},
-    {QStringLiteral("trait.vampiric_aura.1"), UpgradeOptionKind::Trait, QStringLiteral("吸血光环"), QStringLiteral("击杀回复10%生命"), TraitId::VampiricAura, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/vampiric_aura.png")},
-    {QStringLiteral("trait.bouncing_bullet.1"), UpgradeOptionKind::Trait, QStringLiteral("弹射弹"), QStringLiteral("子弹命中弹射到最近敌人"), TraitId::BouncingBullet, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Rare, 1, QStringLiteral(":/images/upgrade_icons/bouncing_bullet.png")},
-    {QStringLiteral("trait.frostbite.1"), UpgradeOptionKind::Trait, QStringLiteral("冰冻减速"), QStringLiteral("子弹命中使敌人减速40%"), TraitId::Frostbite, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/frostbite.png")},
-    {QStringLiteral("trait.critical_strike.1"), UpgradeOptionKind::Trait, QStringLiteral("暴击专精"), QStringLiteral("15%概率1.5倍伤害"), TraitId::CriticalStrike, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Rare, 1, QStringLiteral(":/images/upgrade_icons/critical_strike.png")},
-    {QStringLiteral("trait.exp_boost.1"), UpgradeOptionKind::Trait, QStringLiteral("经验加成"), QStringLiteral("击败敌人经验+20%"), TraitId::ExperienceBoost, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/exp_boost.png")},
-    {QStringLiteral("trait.vitality.1"), UpgradeOptionKind::Trait, QStringLiteral("生命提升"), QStringLiteral("最大生命+30"), TraitId::Vitality, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/vitality.png")},
-    {QStringLiteral("trait.adrenaline.1"), UpgradeOptionKind::Trait, QStringLiteral("肾上腺"), QStringLiteral("击杀后移速+30%持续3秒"), TraitId::Adrenaline, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/adrenaline.png")},
-    {QStringLiteral("weapon.extra_projectiles.1"), UpgradeOptionKind::Weapon, QStringLiteral("弹道增幅"), QStringLiteral("增加1条额外弹道"), TraitId::QuickHands, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Rare, 1, QStringLiteral(":/images/upgrade_icons/extra_projectiles.png")},
-    {QStringLiteral("weapon.range_boost.1"), UpgradeOptionKind::Weapon, QStringLiteral("射程提升"), QStringLiteral("子弹飞行距离+30%"), TraitId::QuickHands, WeaponUpgradeId::RangeBoost, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/range_boost.png")},
-    {QStringLiteral("weapon.pierce.1"), UpgradeOptionKind::Weapon, QStringLiteral("穿透"), QStringLiteral("子弹穿透1个敌人"), TraitId::QuickHands, WeaponUpgradeId::Pierce, UpgradeRarity::Rare, 1, QStringLiteral(":/images/upgrade_icons/pierce.png")},
-    {QStringLiteral("weapon.bullet_size.1"), UpgradeOptionKind::Weapon, QStringLiteral("子弹增幅"), QStringLiteral("子弹碰撞半径+40%"), TraitId::QuickHands, WeaponUpgradeId::BulletSize, UpgradeRarity::Common, 1, QStringLiteral(":/images/upgrade_icons/bullet_size.png")},
-    {QStringLiteral("weapon.combo.1"), UpgradeOptionKind::Weapon, QStringLiteral("连击"), QStringLiteral("每3发子弹造成额外50%伤害"), TraitId::QuickHands, WeaponUpgradeId::Combo, UpgradeRarity::Rare, 1, QStringLiteral(":/images/upgrade_icons/combo.png")},
+    {QStringLiteral("trait.quick_hands.1"), UpgradeOptionKind::Trait, QStringLiteral("快手"), QStringLiteral("提高攻击节奏"), TraitId::QuickHands, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/flexed_biceps_3d_default (1).png")},
+    {QStringLiteral("trait.thick_skin.1"), UpgradeOptionKind::Trait, QStringLiteral("厚皮"), QStringLiteral("提高生存能力"), TraitId::ThickSkin, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/shield_3d.png")},
+    {QStringLiteral("trait.lucky_shot.1"), UpgradeOptionKind::Trait, QStringLiteral("幸运射击"), QStringLiteral("提高伤害上限"), TraitId::LuckyShot, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/bullseye_3d.png")},
+    {QStringLiteral("trait.vampiric_aura.1"), UpgradeOptionKind::Trait, QStringLiteral("吸血光环"), QStringLiteral("击杀回复10%生命"), TraitId::VampiricAura, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/beating_heart_3d.png")},
+    {QStringLiteral("trait.bouncing_bullet.1"), UpgradeOptionKind::Trait, QStringLiteral("弹射弹"), QStringLiteral("子弹命中弹射到最近敌人"), TraitId::BouncingBullet, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Rare, 1, QStringLiteral(":/icons/shooting_star_3d.png")},
+    {QStringLiteral("trait.frostbite.1"), UpgradeOptionKind::Trait, QStringLiteral("冰冻减速"), QStringLiteral("子弹命中使敌人减速40%"), TraitId::Frostbite, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/snowflake_3d.png")},
+    {QStringLiteral("trait.critical_strike.1"), UpgradeOptionKind::Trait, QStringLiteral("暴击专精"), QStringLiteral("15%概率1.5倍伤害"), TraitId::CriticalStrike, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Rare, 1, QStringLiteral(":/icons/four_leaf_clover_3d.png")},
+    {QStringLiteral("trait.exp_boost.1"), UpgradeOptionKind::Trait, QStringLiteral("经验加成"), QStringLiteral("击败敌人经验+20%"), TraitId::ExperienceBoost, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/sparkles_3d.png")},
+    {QStringLiteral("trait.vitality.1"), UpgradeOptionKind::Trait, QStringLiteral("生命提升"), QStringLiteral("最大生命+30"), TraitId::Vitality, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/growing_heart_3d.png")},
+    {QStringLiteral("trait.adrenaline.1"), UpgradeOptionKind::Trait, QStringLiteral("肾上腺"), QStringLiteral("击杀后移速+30%持续3秒"), TraitId::Adrenaline, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Common, 1, QStringLiteral(":/icons/man_running_3d_default.png")},
+    {QStringLiteral("weapon.extra_projectiles.1"), UpgradeOptionKind::Weapon, QStringLiteral("弹道增幅"), QStringLiteral("增加1条额外弹道"), TraitId::QuickHands, WeaponUpgradeId::ExtraProjectiles, UpgradeRarity::Rare, 1, QStringLiteral(":/icons/water_pistol_3d.png")},
+    {QStringLiteral("weapon.range_boost.1"), UpgradeOptionKind::Weapon, QStringLiteral("射程提升"), QStringLiteral("子弹飞行距离+30%"), TraitId::QuickHands, WeaponUpgradeId::RangeBoost, UpgradeRarity::Common, 1, QStringLiteral(":/icons/satellite_antenna_3d.png")},
+    {QStringLiteral("weapon.pierce.1"), UpgradeOptionKind::Weapon, QStringLiteral("穿透"), QStringLiteral("子弹穿透1个敌人"), TraitId::QuickHands, WeaponUpgradeId::Pierce, UpgradeRarity::Rare, 1, QStringLiteral(":/icons/heart_with_arrow_3d.png")},
+    {QStringLiteral("weapon.bullet_size.1"), UpgradeOptionKind::Weapon, QStringLiteral("子弹增幅"), QStringLiteral("子弹碰撞半径+40%"), TraitId::QuickHands, WeaponUpgradeId::BulletSize, UpgradeRarity::Common, 1, QStringLiteral(":/icons/nazar_amulet_3d.png")},
+    {QStringLiteral("weapon.combo.1"), UpgradeOptionKind::Weapon, QStringLiteral("连击"), QStringLiteral("每3发子弹造成额外50%伤害"), TraitId::QuickHands, WeaponUpgradeId::Combo, UpgradeRarity::Rare, 1, QStringLiteral(":/icons/link_3d.png")},
 };
 
 [[nodiscard]] inline const PlayerClassConfig *findPlayerClassConfig(PlayerClassId id)

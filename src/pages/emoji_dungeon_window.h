@@ -11,7 +11,6 @@ class QWidget;
 class ClassSelectPage;
 class GameFactory;
 class GameMainPage;
-class UpgradePage;
 
 class EmojiDungeonWindow : public QMainWindow
 {
@@ -32,7 +31,6 @@ private:
     QLabel *m_pageHintLabel {nullptr};
     ClassSelectPage *m_classSelectPage {nullptr};
     GameMainPage *m_gameMainPage {nullptr};
-    UpgradePage *m_upgradePage {nullptr};
     GameFactory *m_factory {nullptr};
     QList<TraitId> m_selectedTraits;
     PlayerClassId m_currentClassId {PlayerClassId::Warrior};

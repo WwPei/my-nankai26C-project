@@ -1,7 +1,3 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: 升级页面强制选择提示与预览交互
-// 最后修改: 2026-05-07
-// 重构: 左侧按钮列表替换为卡片式 QFrame 列表,右侧预览面板逻辑完整保留
 #include "upgrade_page.h"
 
 #include <QFrame>
@@ -216,10 +212,6 @@ struct ComputedPreviewStats {
 
 } // namespace
 
-// ============================================================================
-// 构造 / 析构
-// ============================================================================
-
 UpgradePage::UpgradePage(QWidget *parent)
     : QWidget(parent)
 {
@@ -247,9 +239,6 @@ UpgradePage::UpgradePage(QWidget *parent)
     QHBoxLayout *contentLayout = new QHBoxLayout();
     contentLayout->setSpacing(16);
 
-    // ========================
-    // 左侧: 卡片容器 (新 UI)
-    // ========================
     m_cardsContainer = new QFrame(this);
     m_cardsContainer->setObjectName(QStringLiteral("cardsContainer"));
     QVBoxLayout *cardsOuterLayout = new QVBoxLayout(m_cardsContainer);
@@ -270,9 +259,6 @@ UpgradePage::UpgradePage(QWidget *parent)
     // 技巧: 用 m_cardsContainer 的子 layout 来管理卡片
     contentLayout->addWidget(m_cardsContainer, 3);
 
-    // ========================
-    // 右侧: 预览面板 (完整保留原有结构)
-    // ========================
     auto *previewPanel = new QFrame(this);
     previewPanel->setObjectName(QStringLiteral("upgradePreviewPanel"));
     auto *previewLayout = new QVBoxLayout(previewPanel);
@@ -361,10 +347,6 @@ UpgradePage::UpgradePage(QWidget *parent)
     setUpgradeOptions(GameConfig::kUpgradeOptions);
 }
 
-// ============================================================================
-// 向后兼容的旧 API
-// ============================================================================
-
 void UpgradePage::setUpgradeOptions(const UpgradeOptions &options)
 {
     const QString previousOptionId = m_selectedOptionId;
@@ -388,10 +370,6 @@ const UpgradeOptions &UpgradePage::upgradeOptions() const noexcept
     return m_upgradeOptions;
 }
 
-// ============================================================================
-// 新统一 API
-// ============================================================================
-
 void UpgradePage::loadOptions(const UpgradeOptions &options, const UpgradePreviewContext &context)
 {
     m_upgradeOptions = options;
@@ -403,10 +381,6 @@ void UpgradePage::loadOptions(const UpgradeOptions &options, const UpgradePrevie
     buildOptionCards();
     rebuildPreviewPanel();
 }
-
-// ============================================================================
-// 事件过滤器: 卡片点击
-// ============================================================================
 
 bool UpgradePage::eventFilter(QObject *watched, QEvent *event)
 {
@@ -423,10 +397,6 @@ bool UpgradePage::eventFilter(QObject *watched, QEvent *event)
     }
     return QWidget::eventFilter(watched, event);
 }
-
-// ============================================================================
-// 新卡片 UI 方法
-// ============================================================================
 
 void UpgradePage::buildOptionCards()
 {
@@ -614,10 +584,6 @@ void UpgradePage::rebuildPreviewPanel()
     }
 }
 
-// ============================================================================
-// 旧按钮 UI 方法 (向后兼容, 保留实现避免链接错误)
-// ============================================================================
-
 void UpgradePage::rebuildOptionButtons()
 {
     // 新架构中不再使用按钮列表, 委托给 buildOptionCards
@@ -633,10 +599,6 @@ void UpgradePage::setSelectedOptionIndex(int index)
 {
     selectCard(index);
 }
-
-// ============================================================================
-// 预览面板核心逻辑 (完整保留原实现)
-// ============================================================================
 
 void UpgradePage::updatePreviewPanel()
 {

@@ -10,9 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Qt6 6.10 REQUIRED COMPONENTS Core Gui Widgets Test)
-
-include(CTest)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Core Gui Widgets Multimedia)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -83,24 +81,7 @@ qt_add_executable(emoji_dungeon
     ${SHARED_SOURCES}
 )
 
-qt_add_executable(stage1_system_test
-    MANUAL_FINALIZATION
-    tests/stage1_system_test.cpp
-    ${SHARED_SOURCES}
-)
-
 target_include_directories(emoji_dungeon PRIVATE
-    src/core
-    src/models/interfaces
-    src/models/basic
-    src/views/interfaces
-    src/views
-    src/pages
-    src/systems
-    src/bullets
-)
-
-target_include_directories(stage1_system_test PRIVATE
     src/core
     src/models/interfaces
     src/models/basic
@@ -113,17 +94,11 @@ target_include_directories(stage1_system_test PRIVATE
 
 target_link_libraries(emoji_dungeon
     PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/app_icon_res.o"
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets
-)
-
-target_link_libraries(stage1_system_test
-    PRIVATE
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Widgets
-        Qt6::Test
+        Qt6::Multimedia
 )
 
 set_target_properties(emoji_dungeon PROPERTIES
@@ -140,9 +115,4 @@ install(TARGETS emoji_dungeon
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-if(BUILD_TESTING)
-    add_test(NAME stage1_system_test COMMAND stage1_system_test)
-endif()
-
 qt_finalize_executable(emoji_dungeon)
-qt_finalize_executable(stage1_system_test)

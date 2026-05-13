@@ -49,9 +49,9 @@ QHash<PlayerClassId, QColor> ClassSelectPage::classAccentColors()
 QHash<PlayerClassId, QString> ClassSelectPage::classIcons()
 {
     return {
-        {PlayerClassId::Warrior, QStringLiteral("\u2694\uFE0F")},
-        {PlayerClassId::Ranger,  QStringLiteral("\U0001F3F9")},
-        {PlayerClassId::Caster,  QStringLiteral("\U0001F52E")}
+        {PlayerClassId::Warrior, QStringLiteral(":/character/slightly_smiling_face_3d.png")},
+        {PlayerClassId::Ranger,  QStringLiteral(":/character/cowboy_hat_face_3d.png")},
+        {PlayerClassId::Caster,  QStringLiteral(":/character/face_with_monocle_3d.png")}
     };
 }
 
@@ -141,11 +141,12 @@ void ClassSelectPage::setupUi()
         cardLayout->setContentsMargins(16, 20, 16, 20);
         cardLayout->setSpacing(8);
 
-        QLabel *iconLabel = new QLabel(icons.value(config.id), card);
+        QPixmap iconPixmap(icons.value(config.id));
+        QLabel *iconLabel = new QLabel(card);
         iconLabel->setAlignment(Qt::AlignCenter);
-        QFont iconFont = iconLabel->font();
-        iconFont.setPointSize(36);
-        iconLabel->setFont(iconFont);
+        if (!iconPixmap.isNull()) {
+            iconLabel->setPixmap(iconPixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
         cardLayout->addWidget(iconLabel);
 
         QLabel *nameLabel = new QLabel(config.displayName, card);

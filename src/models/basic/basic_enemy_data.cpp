@@ -1,17 +1,9 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: BasicEnemyData 类实现 - 敌人运行时状态与 AI 逻辑
-// 最后修改: 2026-05-07
-
 #include "basic_enemy_data.h"
 
 #include <QLineF>
 
 #include <algorithm>
 #include <cmath>
-
-// ============================================================================
-// 构造 / 析构
-// ============================================================================
 
 BasicEnemyData::BasicEnemyData(const EnemyConfig *config, const QPointF &spawnPosition, QObject *parent)
     : EnemyData(parent)
@@ -22,10 +14,6 @@ BasicEnemyData::BasicEnemyData(const EnemyConfig *config, const QPointF &spawnPo
     , m_behavior(config != nullptr ? config->behavior : EnemyBehavior::Chase)
 {
 }
-
-// ============================================================================
-// 属性查询（const）
-// ============================================================================
 
 EnemyId BasicEnemyData::id() const
 {
@@ -76,10 +64,6 @@ bool BasicEnemyData::isDefeated() const
     return m_defeated;
 }
 
-// ============================================================================
-// 减速效果查询
-// ============================================================================
-
 float BasicEnemyData::slowFactor() const
 {
     return m_slowFactorValue;
@@ -89,10 +73,6 @@ float BasicEnemyData::slowRemainingSeconds() const
 {
     return m_slowRemainingSecondsValue;
 }
-
-// ============================================================================
-// AI 相关状态查询
-// ============================================================================
 
 EnemyBehavior BasicEnemyData::currentBehavior() const
 {
@@ -124,10 +104,6 @@ QString BasicEnemyData::imagePath() const
 {
     return m_config != nullptr ? m_config->imagePath : QString();
 }
-
-// ============================================================================
-// Slots: 核心逻辑
-// ============================================================================
 
 void BasicEnemyData::setWorldPosition(const QPointF &position)
 {

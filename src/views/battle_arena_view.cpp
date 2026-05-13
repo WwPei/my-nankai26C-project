@@ -16,6 +16,7 @@ BattleArenaView::BattleArenaView(QGraphicsScene *scene, QWidget *parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setTransformationAnchor(QGraphicsView::AnchorViewCenter);
     setResizeAnchor(QGraphicsView::AnchorViewCenter);
+    setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 }
 
 void BattleArenaView::setGridVisible(bool visible)
@@ -28,9 +29,20 @@ void BattleArenaView::setGridVisible(bool visible)
     viewport()->update();
 }
 
+void BattleArenaView::setBackgroundImage(const QPixmap &pixmap)
+{
+    m_backgroundImage = pixmap;
+    viewport()->update();
+}
+
 void BattleArenaView::drawBackground(QPainter *painter, const QRectF &rect)
 {
-    painter->fillRect(rect, QColor(QStringLiteral("#2a2a2a")));
+    if (m_backgroundImage.isNull()) {
+        painter->fillRect(rect, QColor(QStringLiteral("#2a2a2a")));
+    } else {
+        painter->drawPixmap(rect.toRect(), m_backgroundImage.scaled(
+            rect.size().toSize(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+    }
 
     if (!m_gridVisible) {
         return;

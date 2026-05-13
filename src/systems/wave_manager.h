@@ -5,10 +5,6 @@
 
 #include "game_data.h"
 
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: 波次管理、怪物系列划分、Boss生成信号、动态难度倍率
-// 最后修改: 2026-05-07
-
 /// 怪物系列：根据当前波次划分，决定生成哪些类型的敌人
 enum class MonsterSeries {
     None,

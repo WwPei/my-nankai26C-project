@@ -1,7 +1,3 @@
-// FILE_LOCK: @qt6-logic-developer-emojidungeon
-// 负责: 战斗协调器 - 射击、碰撞检测、清理逻辑、波次经验倍率
-// 最后修改: 2026-05-09
-
 #include "combat_coordinator.h"
 
 #include "bullet.h"

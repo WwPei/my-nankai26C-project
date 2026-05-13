@@ -1,25 +1,49 @@
+# Build output
 build/
+build-release/
+cmake-build-*/
 
-*.user
-*.pro.user
-*.pro.user.*
-
-CMakeLists.txt.user
-
+# IDE files
 .vscode/
 .idea/
 .qtcreator/
+*.user
+*.pro.user
+*.pro.user.*
 *.swp
 *.swo
 *~
 
-*.o
-*.obj
-*.moc
+# Qt Creator
+*.autosave
 moc_*.cpp
 qrc_*.cpp
+ui_*.h
 
+# OS files
+Thumbs.db
+.DS_Store
+
+# Compiled
 *.exe
+*.dll
+*.lib
+*.a
+*.obj
+*.o
 
+# Logs
 *.log
 Testing/
+
+# Screenshots
+[0-9].png
+
+# Coursework
+*.docx
+
+# Archives
+*.zip
+
+# Internal docs
+emoji_dungeon_combat_optimization_plan.md

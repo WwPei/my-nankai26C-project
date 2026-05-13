@@ -155,7 +155,7 @@ void BasicEnemyView::syncFromData()
         return;
     }
 
-    const qreal newRadius = std::max<qreal>(12.0, m_model->collisionRadius());
+    const qreal newRadius = std::max<qreal>(16.0, m_model->collisionRadius() * 1.6);
     if (!qFuzzyCompare(m_radius, newRadius)) {
         prepareGeometryChange();
         m_radius = newRadius;
